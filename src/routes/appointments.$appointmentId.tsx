@@ -85,7 +85,7 @@ function AppointmentDetail() {
               Mark completed
             </Button>
           ) : (
-            <StatusPill tone="positive">{appointment.status}</StatusPill>
+            <StatusPill tone="success">{appointment.status}</StatusPill>
           )
         }
       />

@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Logo } from "@/components/vitavyn/Logo";
+import { VitavynLogo } from "@/components/vitavyn/Logo";
 import { Panel } from "@/components/vitavyn/primitives";
 import { useVitavyn } from "@/lib/vitavyn/store";
 
@@ -61,7 +61,7 @@ function OnboardingPage() {
   return (
     <div className="mx-auto max-w-xl space-y-6">
       <div className="flex justify-center">
-        <Logo />
+        <VitavynLogo />
       </div>
 
       <div className="flex justify-center gap-2">
