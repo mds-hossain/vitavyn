@@ -17,6 +17,11 @@ type Ctx = {
   hydrated: boolean;
   update: (fn: (draft: VitavynData) => VitavynData) => void;
   add: <K extends CollectionKey>(key: K, item: Omit<VitavynData[K][number], keyof Stamp>) => void;
+  updateItem: <K extends CollectionKey>(
+    key: K,
+    id: string,
+    patch: Partial<VitavynData[K][number]>,
+  ) => void;
   remove: (key: CollectionKey, id: string) => void;
   setPreferences: (p: Partial<Preferences>) => void;
   setProfile: (p: Partial<Profile>) => void;
