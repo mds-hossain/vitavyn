@@ -83,7 +83,7 @@ export function MetricTile({
 
   return (
     <div className="rounded-xl border border-border bg-background/60 p-4">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-sm font-medium text-muted-foreground">{label}</p>
       <p className={cn("metric-value mt-2 text-3xl", toneClass)}>
         {value}
         {unit ? <span className="ml-1 text-base text-muted-foreground">{unit}</span> : null}
