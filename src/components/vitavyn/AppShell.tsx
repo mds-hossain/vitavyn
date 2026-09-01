@@ -218,7 +218,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
           <BottomLink
             to="/appointments"
-            label="Visits"
+            label="Appointments"
             icon={CalendarDays}
             active={pathname.startsWith("/appointments")}
           />

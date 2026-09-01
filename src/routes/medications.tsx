@@ -101,7 +101,7 @@ function MedicationsPage() {
       recordedAt: new Date().toISOString(),
       status,
     } as never);
-    toast.success(status === "recorded" ? "Dose recorded" : "Dose marked as skipped");
+    toast.success(status === "recorded" ? "Dose recorded" : "Marked as not taken");
   };
 
   const openAdd = () => {
@@ -206,7 +206,7 @@ function MedicationsPage() {
                 </div>
                 {log ? (
                   <StatusPill tone={log.status === "recorded" ? "success" : "neutral"}>
-                    {log.status === "recorded" ? "Recorded" : "Skipped"}
+                    {log.status === "recorded" ? "Recorded" : "Not taken"}
                   </StatusPill>
                 ) : (
                   <div className="flex gap-2">
@@ -214,7 +214,7 @@ function MedicationsPage() {
                       <Check className="h-4 w-4" /> Record
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => markDose(med.id, time, "skipped")}>
-                      <SkipForward className="h-4 w-4" /> Skip
+                      <SkipForward className="h-4 w-4" /> Not taken
                     </Button>
                   </div>
                 )}
