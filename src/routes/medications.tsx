@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { format, isSameDay } from "date-fns";
-import { Check, Pill, Plus, SkipForward, Trash2 } from "lucide-react";
+import { Check, Pencil, Pill, Plus, SkipForward, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { EmptyState, PageHeader, Panel, SafetyNote, StatusPill } from "@/components/vitavyn/primitives";
+import { DoseScheduleField, slotLabel, sortSchedule } from "@/components/vitavyn/DoseScheduleField";
 import { useVitavyn } from "@/lib/vitavyn/store";
+import type { DoseSlot, Medication, SlotId } from "@/lib/vitavyn/types";
 
 export const Route = createFileRoute("/medications")({
   head: () => ({
@@ -32,31 +34,62 @@ export const Route = createFileRoute("/medications")({
   component: MedicationsPage,
 });
 
+function inferSlot(time: string): SlotId {
+  const hour = Number(time.split(":")[0] ?? 8);
+  if (hour < 11) return "morning";
+  if (hour < 16) return "noon";
+  if (hour < 21) return "evening";
+  return "night";
+}
+
+export function medicationSchedule(med: Medication): DoseSlot[] {
+  if (med.schedule?.length) return sortSchedule(med.schedule);
+  return sortSchedule((med.times ?? []).map((time) => ({ slot: inferSlot(time), time })));
+}
+
+function describeSchedule(schedule: DoseSlot[]) {
+  return schedule.map((s) => `${slotLabel(s.slot)} ${s.time}`).join(" · ") || "No times set";
+}
+
+type MedForm = {
+  name: string;
+  dose: string;
+  unit: string;
+  form: string;
+  prescriber: string;
+  notes: string;
+  schedule: DoseSlot[];
+};
+
+const emptyForm: MedForm = {
+  name: "",
+  dose: "",
+  unit: "mg",
+  form: "tablet",
+  prescriber: "",
+  notes: "",
+  schedule: [{ slot: "morning", time: "08:00" }],
+};
+
 function MedicationsPage() {
-  const { data, add, remove } = useVitavyn();
+  const { data, add, remove, updateItem } = useVitavyn();
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({
-    name: "",
-    dose: "",
-    unit: "mg",
-    form: "tablet",
-    frequency: "Once daily",
-    times: "08:00",
-    prescriber: "",
-    notes: "",
-  });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<MedForm>(emptyForm);
 
   const today = new Date();
   const todaysLogs = data.medicationLogs.filter((log) => isSameDay(new Date(log.scheduledFor), today));
 
-  const schedule = data.medications.flatMap((med) =>
-    med.times.map((time) => {
-      const log = todaysLogs.find(
-        (l) => l.medicationId === med.id && format(new Date(l.scheduledFor), "HH:mm") === time,
-      );
-      return { med, time, log };
-    }),
-  ).sort((a, b) => a.time.localeCompare(b.time));
+  const schedule = data.medications
+    .flatMap((med) =>
+      medicationSchedule(med).map(({ slot, time }) => {
+        const log = todaysLogs.find(
+          (l) => l.medicationId === med.id && format(new Date(l.scheduledFor), "HH:mm") === time,
+        );
+        return { med, slot, time, log };
+      }),
+    )
+    .sort((a, b) => a.time.localeCompare(b.time));
 
   const markDose = (medicationId: string, time: string, status: "recorded" | "skipped") => {
     const [h, m] = time.split(":");
@@ -71,28 +104,64 @@ function MedicationsPage() {
     toast.success(status === "recorded" ? "Dose recorded" : "Dose marked as skipped");
   };
 
+  const openAdd = () => {
+    setEditingId(null);
+    setForm(emptyForm);
+    setOpen(true);
+  };
+
+  const openEdit = (med: Medication) => {
+    setEditingId(med.id);
+    setForm({
+      name: med.name,
+      dose: med.dose,
+      unit: med.unit,
+      form: med.form,
+      prescriber: med.prescriber ?? "",
+      notes: med.notes ?? "",
+      schedule: medicationSchedule(med),
+    });
+    setOpen(true);
+  };
+
   const saveMedication = () => {
     if (!form.name.trim()) {
       toast.error("Medication name is required");
       return;
     }
-    add("medications", {
+    if (form.schedule.length === 0) {
+      toast.error("Pick at least one time of day");
+      return;
+    }
+    const payload = {
       name: form.name.trim(),
       dose: form.dose,
       unit: form.unit,
       form: form.form,
-      frequency: form.frequency,
-      times: form.times.split(",").map((t) => t.trim()).filter(Boolean),
-      conditionIds: [],
+      frequency:
+        form.schedule.length === 1 ? "Once daily" : `${form.schedule.length} times daily`,
+      schedule: sortSchedule(form.schedule),
+      times: sortSchedule(form.schedule).map((s) => s.time),
       prescriber: form.prescriber,
       notes: form.notes,
-      startDate: new Date().toISOString(),
-      endDate: null,
-      refillReminder: true,
-    } as never);
+    };
+
+    if (editingId) {
+      updateItem("medications", editingId, payload as never);
+      toast.success("Medication updated");
+    } else {
+      add("medications", {
+        ...payload,
+        conditionIds: [],
+        startDate: new Date().toISOString(),
+        endDate: null,
+        refillReminder: true,
+      } as never);
+      toast.success("Medication added");
+    }
     setOpen(false);
-    setForm({ ...form, name: "", dose: "", prescriber: "", notes: "" });
-    toast.success("Medication added");
+    setEditingId(null);
+    setForm(emptyForm);
   };
 
   const takenCount = todaysLogs.filter((l) => l.status === "recorded").length;
@@ -103,7 +172,7 @@ function MedicationsPage() {
         title="Medications"
         description="Vitavyn tracks what you record. It never suggests changing a dose."
         actions={
-          <Button onClick={() => setOpen(true)}>
+          <Button onClick={openAdd}>
             <Plus className="h-4 w-4" /> Add medication
           </Button>
         }
@@ -118,13 +187,16 @@ function MedicationsPage() {
         }
       >
         {schedule.length === 0 ? (
-          <EmptyState title="No doses scheduled" description="Add a medication with times to build your daily schedule." />
+          <EmptyState title="No doses scheduled" description="Add a medication and choose morning, noon, evening or night." />
         ) : (
           <ul className="divide-y divide-border">
-            {schedule.map(({ med, time, log }) => (
+            {schedule.map(({ med, slot, time, log }) => (
               <li key={med.id + time} className="flex items-center justify-between gap-3 py-3">
                 <div className="flex items-center gap-3">
-                  <span className="metric-value w-14 text-sm text-muted-foreground">{time}</span>
+                  <div className="w-20">
+                    <p className="metric-value text-sm">{time}</p>
+                    <p className="text-xs text-muted-foreground">{slotLabel(slot)}</p>
+                  </div>
                   <div>
                     <p className="text-sm font-medium">{med.name}</p>
                     <p className="text-xs text-muted-foreground">
@@ -165,21 +237,31 @@ function MedicationsPage() {
                     <div>
                       <p className="font-medium">{med.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {med.dose} {med.unit} · {med.frequency} · {med.times.join(", ")}
+                        {med.dose} {med.unit} · {describeSchedule(medicationSchedule(med))}
                       </p>
                       {med.prescriber ? (
                         <p className="mt-1 text-xs text-muted-foreground">Prescribed by {med.prescriber}</p>
                       ) : null}
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={`Remove ${med.name}`}
-                    onClick={() => remove("medications", med.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Edit ${med.name}`}
+                      onClick={() => openEdit(med)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Remove ${med.name}`}
+                      onClick={() => remove("medications", med.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </li>
             ))}
@@ -192,9 +274,9 @@ function MedicationsPage() {
       </SafetyNote>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[92vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add medication</DialogTitle>
+            <DialogTitle>{editingId ? "Edit medication" : "Add medication"}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
@@ -210,12 +292,21 @@ function MedicationsPage() {
               <Input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
             </div>
             <div className="space-y-1.5">
-              <Label>Frequency</Label>
-              <Input value={form.frequency} onChange={(e) => setForm({ ...form, frequency: e.target.value })} />
+              <Label>Form</Label>
+              <Input value={form.form} onChange={(e) => setForm({ ...form, form: e.target.value })} />
             </div>
             <div className="space-y-1.5">
-              <Label>Times (comma separated)</Label>
-              <Input value={form.times} onChange={(e) => setForm({ ...form, times: e.target.value })} />
+              <Label>Prescriber</Label>
+              <Input
+                value={form.prescriber}
+                onChange={(e) => setForm({ ...form, prescriber: e.target.value })}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <DoseScheduleField
+                schedule={form.schedule}
+                onChange={(next) => setForm({ ...form, schedule: next })}
+              />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Notes</Label>
@@ -223,7 +314,9 @@ function MedicationsPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={saveMedication}>Save medication</Button>
+            <Button onClick={saveMedication}>
+              {editingId ? "Save changes" : "Save medication"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

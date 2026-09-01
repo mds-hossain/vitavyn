@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,12 +13,17 @@ import {
 } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useVitavyn } from "@/lib/vitavyn/store";
-import { glucoseToMgdl, glucoseToMmol, round } from "@/lib/vitavyn/units";
+import { round, toCanonicalValue, canonicalUnit } from "@/lib/vitavyn/units";
+import { UnitValueInput } from "@/components/vitavyn/UnitValueInput";
+import { AddressAutocomplete } from "@/components/vitavyn/AddressAutocomplete";
+import { DoseScheduleField, sortSchedule } from "@/components/vitavyn/DoseScheduleField";
+import type { DoseSlot } from "@/lib/vitavyn/types";
 
 const ENTRY_TYPES = [
   { id: "glucose", label: "Log glucose" },
   { id: "blood_pressure", label: "Blood pressure" },
   { id: "weight", label: "Weight" },
+  { id: "temperature", label: "Temperature" },
   { id: "medication", label: "Medication" },
   { id: "symptom", label: "Symptom" },
   { id: "meal", label: "Meal" },
@@ -47,9 +52,13 @@ type FormState = {
   specialty?: string;
   startsAt?: string;
   location?: string;
+  website?: string;
   panel?: string;
   analyte?: string;
   dueDate?: string;
+  dose?: string;
+  doseUnit?: string;
+  form?: string;
 };
 
 export function QuickAdd({
@@ -62,39 +71,67 @@ export function QuickAdd({
   initialType?: EntryType;
 }) {
   const { data, add, update } = useVitavyn();
+  const prefs = data.preferences;
   const [type, setType] = useState<EntryType | null>(initialType ?? null);
   const [form, setForm] = useState<FormState>({});
+  const [medMode, setMedMode] = useState<"record" | "new">(
+    data.medications.length > 0 ? "record" : "new",
+  );
+  const [schedule, setSchedule] = useState<DoseSlot[]>([{ slot: "morning", time: "08:00" }]);
+
+  useEffect(() => {
+    if (open) setType(initialType ?? null);
+  }, [open, initialType]);
 
   const set = (key: keyof FormState, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
+
   const close = () => {
     setForm({});
     setType(null);
+    setSchedule([{ slot: "morning", time: "08:00" }]);
     onOpenChange(false);
+  };
+
+  const pickType = (next: EntryType) => {
+    setType(next);
+    // Default the unit selector to the user's display preference,
+    // but they can always switch it on the form.
+    if (next === "glucose") set("unit", prefs.glucoseUnit);
+    if (next === "weight") set("unit", prefs.weightUnit);
+    if (next === "temperature") set("unit", prefs.tempUnit);
+    if (next === "medication") setMedMode(data.medications.length > 0 ? "record" : "new");
   };
 
   const nowIso = () => new Date().toISOString();
 
+  const saveMeasurement = (kind: string, label: string, extra: Record<string, unknown> = {}) => {
+    const raw = Number(form.value);
+    if (!form.value || !Number.isFinite(raw)) {
+      toast.error(`Enter a ${label.toLowerCase()} value`);
+      return false;
+    }
+    const unit = form.unit ?? canonicalUnit(kind);
+    add("measurements", {
+      kind,
+      label,
+      value: round(toCanonicalValue(kind, unit, raw), 2),
+      unit: canonicalUnit(kind),
+      takenAt: nowIso(),
+      notes: form.notes,
+      ...extra,
+    } as never);
+    return true;
+  };
+
   const save = () => {
     switch (type) {
       case "glucose": {
-        const raw = Number(form.value);
-        if (!raw) {
-          toast.error("Enter a glucose value");
-          return;
-        }
-        const unit = (form.unit ?? data.preferences.glucoseUnit) as "mg/dL" | "mmol/L";
-        const mgdl = unit === "mg/dL" ? raw : glucoseToMgdl(raw);
-        add("measurements", {
-          kind: "glucose",
-          label: "Blood glucose",
-          value: round(mgdl, 0),
-          unit: "mg/dL",
+        const ok = saveMeasurement("glucose", "Blood glucose", {
           context: form.context ?? "Other",
           conditionId: data.conditions.find((c) => c.name.includes("Diabetes"))?.id ?? null,
-          takenAt: nowIso(),
-          notes: form.notes,
-        } as never);
+        });
+        if (!ok) return;
         break;
       }
       case "blood_pressure": {
@@ -114,20 +151,39 @@ export function QuickAdd({
         break;
       }
       case "weight": {
-        if (!form.value) {
-          toast.error("Enter a weight");
-          return;
-        }
-        add("measurements", {
-          kind: "weight",
-          label: "Weight",
-          value: Number(form.value),
-          unit: data.preferences.weightUnit,
-          takenAt: nowIso(),
-        } as never);
+        if (!saveMeasurement("weight", "Weight")) return;
+        break;
+      }
+      case "temperature": {
+        if (!saveMeasurement("temperature", "Temperature")) return;
         break;
       }
       case "medication": {
+        if (medMode === "new") {
+          if (!form.name?.trim()) {
+            toast.error("Medication name is required");
+            return;
+          }
+          if (schedule.length === 0) {
+            toast.error("Pick at least one time of day");
+            return;
+          }
+          const sorted = sortSchedule(schedule);
+          add("medications", {
+            name: form.name.trim(),
+            dose: form.dose ?? "",
+            unit: form.doseUnit ?? "mg",
+            form: form.form ?? "tablet",
+            frequency: sorted.length === 1 ? "Once daily" : `${sorted.length} times daily`,
+            schedule: sorted,
+            times: sorted.map((s) => s.time),
+            conditionIds: [],
+            startDate: nowIso(),
+            endDate: null,
+            refillReminder: true,
+          } as never);
+          break;
+        }
         if (!form.medicationId) {
           toast.error("Choose a medication");
           return;
@@ -178,6 +234,7 @@ export function QuickAdd({
           specialty: form.specialty ?? "",
           startsAt: new Date(form.startsAt).toISOString(),
           location: form.location,
+          website: form.website,
           questions: [],
           status: "upcoming",
         } as never);
@@ -232,7 +289,7 @@ export function QuickAdd({
             {ENTRY_TYPES.map((entry) => (
               <button
                 key={entry.id}
-                onClick={() => setType(entry.id)}
+                onClick={() => pickType(entry.id)}
                 className="rounded-xl border border-border bg-surface px-4 py-4 text-left text-sm font-medium transition-colors hover:border-primary hover:bg-accent"
               >
                 {entry.label}
@@ -243,38 +300,15 @@ export function QuickAdd({
           <div className="space-y-4 px-4 pb-8">
             {type === "glucose" && (
               <>
-                {field(
-                  "Value",
-                  <Input
-                    type="number"
-                    inputMode="decimal"
-                    value={form.value ?? ""}
-                    onChange={(e) => set("value", e.target.value)}
-                    className="metric-value h-16 text-3xl"
-                  />,
-                )}
-                {field(
-                  "Unit",
-                  <Select
-                    value={form.unit ?? data.preferences.glucoseUnit}
-                    onValueChange={(v) => set("unit", v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="mg/dL">mg/dL</SelectItem>
-                      <SelectItem value="mmol/L">mmol/L</SelectItem>
-                    </SelectContent>
-                  </Select>,
-                )}
-                <p className="text-sm text-muted-foreground">
-                  {form.value
-                    ? (form.unit ?? data.preferences.glucoseUnit) === "mg/dL"
-                      ? `≈ ${round(glucoseToMmol(Number(form.value)), 1)} mmol/L`
-                      : `≈ ${round(glucoseToMgdl(Number(form.value)), 0)} mg/dL`
-                    : "Conversion appears as you type."}
-                </p>
+                <UnitValueInput
+                  kind="glucose"
+                  label="Blood glucose"
+                  big
+                  value={form.value ?? ""}
+                  unit={form.unit ?? prefs.glucoseUnit}
+                  onValueChange={(v) => set("value", v)}
+                  onUnitChange={(u) => set("unit", u)}
+                />
                 {field(
                   "Context",
                   <Select value={form.context ?? "Fasting"} onValueChange={(v) => set("context", v)}>
@@ -296,7 +330,7 @@ export function QuickAdd({
             {type === "blood_pressure" && (
               <div className="grid grid-cols-2 gap-3">
                 {field(
-                  "Systolic",
+                  "Systolic (mmHg)",
                   <Input
                     type="number"
                     value={form.systolic ?? ""}
@@ -305,7 +339,7 @@ export function QuickAdd({
                   />,
                 )}
                 {field(
-                  "Diastolic",
+                  "Diastolic (mmHg)",
                   <Input
                     type="number"
                     value={form.diastolic ?? ""}
@@ -316,34 +350,111 @@ export function QuickAdd({
               </div>
             )}
 
-            {type === "weight" &&
-              field(
-                `Weight (${data.preferences.weightUnit})`,
-                <Input
-                  type="number"
-                  value={form.value ?? ""}
-                  onChange={(e) => set("value", e.target.value)}
-                  className="metric-value h-14 text-2xl"
-                />,
-              )}
+            {type === "weight" && (
+              <UnitValueInput
+                kind="weight"
+                label="Weight"
+                big
+                value={form.value ?? ""}
+                unit={form.unit ?? prefs.weightUnit}
+                onValueChange={(v) => set("value", v)}
+                onUnitChange={(u) => set("unit", u)}
+              />
+            )}
 
-            {type === "medication" &&
-              field(
-                "Medication",
-                <Select value={form.medicationId ?? ""} onValueChange={(v) => set("medicationId", v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose medication" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {data.medications.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        {m.name} {m.dose}
-                        {m.unit}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>,
-              )}
+            {type === "temperature" && (
+              <UnitValueInput
+                kind="temperature"
+                label="Temperature"
+                big
+                value={form.value ?? ""}
+                unit={form.unit ?? prefs.tempUnit}
+                onValueChange={(v) => set("value", v)}
+                onUnitChange={(u) => set("unit", u)}
+              />
+            )}
+
+            {type === "medication" && (
+              <>
+                <div className="grid grid-cols-2 gap-2 rounded-xl bg-muted p-1">
+                  {(
+                    [
+                      ["record", "Record a dose"],
+                      ["new", "Add new medication"],
+                    ] as const
+                  ).map(([mode, label]) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setMedMode(mode)}
+                      className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                        medMode === mode
+                          ? "bg-surface text-foreground shadow-sm"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                {medMode === "record" ? (
+                  data.medications.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No medications yet — switch to “Add new medication” first.
+                    </p>
+                  ) : (
+                    field(
+                      "Medication",
+                      <Select
+                        value={form.medicationId ?? ""}
+                        onValueChange={(v) => set("medicationId", v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose medication" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {data.medications.map((m) => (
+                            <SelectItem key={m.id} value={m.id}>
+                              {m.name} {m.dose}
+                              {m.unit}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>,
+                    )
+                  )
+                ) : (
+                  <>
+                    {field(
+                      "Name",
+                      <Input value={form.name ?? ""} onChange={(e) => set("name", e.target.value)} />,
+                    )}
+                    <div className="grid grid-cols-3 gap-3">
+                      {field(
+                        "Dose",
+                        <Input value={form.dose ?? ""} onChange={(e) => set("dose", e.target.value)} />,
+                      )}
+                      {field(
+                        "Unit",
+                        <Input
+                          value={form.doseUnit ?? "mg"}
+                          onChange={(e) => set("doseUnit", e.target.value)}
+                        />,
+                      )}
+                      {field(
+                        "Form",
+                        <Input
+                          value={form.form ?? "tablet"}
+                          onChange={(e) => set("form", e.target.value)}
+                        />,
+                      )}
+                    </div>
+                    <DoseScheduleField schedule={schedule} onChange={setSchedule} />
+                  </>
+                )}
+              </>
+            )}
 
             {type === "symptom" && (
               <>
@@ -431,9 +542,18 @@ export function QuickAdd({
                   />,
                 )}
                 {field(
-                  "Location",
-                  <Input value={form.location ?? ""} onChange={(e) => set("location", e.target.value)} />,
+                  "Website",
+                  <Input
+                    placeholder="https://clinic.example"
+                    value={form.website ?? ""}
+                    onChange={(e) => set("website", e.target.value)}
+                  />,
                 )}
+                <AddressAutocomplete
+                  label="Location"
+                  value={form.location ?? ""}
+                  onChange={(v) => set("location", v)}
+                />
               </>
             )}
 
@@ -471,13 +591,6 @@ export function QuickAdd({
                 )}
               </>
             )}
-
-            {type !== "glucose" && type !== "note" && type !== "appointment" && type !== "lab"
-              ? field(
-                  "Notes",
-                  <Textarea value={form.notes ?? ""} onChange={(e) => set("notes", e.target.value)} />,
-                )
-              : null}
 
             <div className="flex gap-2 pt-2">
               <Button variant="outline" className="flex-1" onClick={() => setType(null)}>

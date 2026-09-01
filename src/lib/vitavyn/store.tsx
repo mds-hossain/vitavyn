@@ -17,6 +17,11 @@ type Ctx = {
   hydrated: boolean;
   update: (fn: (draft: VitavynData) => VitavynData) => void;
   add: <K extends CollectionKey>(key: K, item: Omit<VitavynData[K][number], keyof Stamp>) => void;
+  updateItem: <K extends CollectionKey>(
+    key: K,
+    id: string,
+    patch: Partial<VitavynData[K][number]>,
+  ) => void;
   remove: (key: CollectionKey, id: string) => void;
   setPreferences: (p: Partial<Preferences>) => void;
   setProfile: (p: Partial<Profile>) => void;
@@ -94,6 +99,15 @@ export function VitavynProvider({ children }: { children: ReactNode }) {
             ...stamp(),
             ...(item as Record<string, unknown>),
           });
+          return draft;
+        }),
+      updateItem: (key, id, patch) =>
+        update((draft) => {
+          draft[key] = (draft[key] as Record<string, unknown>[]).map((row) =>
+            (row as { id: string }).id === id
+              ? { ...row, ...(patch as Record<string, unknown>), updatedAt: new Date().toISOString() }
+              : row,
+          ) as never;
           return draft;
         }),
       remove: (key, id) =>

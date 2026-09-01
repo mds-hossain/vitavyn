@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { format } from "date-fns";
-import { FileText, Plus, Trash2 } from "lucide-react";
+import { FileText, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { EmptyState, PageHeader, Panel, SafetyNote, StatusPill } from "@/components/vitavyn/primitives";
+import { EditRecordDialog } from "@/components/vitavyn/EditRecordDialog";
 import { useVitavyn } from "@/lib/vitavyn/store";
+import type { MedicalRecord } from "@/lib/vitavyn/types";
 
 export const Route = createFileRoute("/records")({
   head: () => ({
@@ -34,10 +36,11 @@ export const Route = createFileRoute("/records")({
 const CATEGORIES = ["All", "Prescription", "Lab report", "Imaging", "Discharge summary", "Insurance", "Other"];
 
 function RecordsPage() {
-  const { data, add, remove } = useVitavyn();
+  const { data, add, remove, updateItem } = useVitavyn();
   const [category, setCategory] = useState("All");
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<MedicalRecord | null>(null);
   const [form, setForm] = useState({ title: "", category: "Prescription", issuedBy: "", fileName: "" });
 
   const rows = data.records.filter(
@@ -119,6 +122,14 @@ function RecordsPage() {
                   <Button
                     variant="ghost"
                     size="icon"
+                    aria-label={`Edit ${record.title}`}
+                    onClick={() => setEditing(record)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     aria-label={`Remove ${record.title}`}
                     onClick={() => remove("records", record.id)}
                   >
@@ -134,6 +145,43 @@ function RecordsPage() {
       <SafetyNote>
         On the free Local plan, documents stay on this device only. Upgrade to Sync or Vault for encrypted backup.
       </SafetyNote>
+
+      <EditRecordDialog
+        title="Edit record"
+        open={!!editing}
+        onOpenChange={(next) => (next ? null : setEditing(null))}
+        fields={[
+          { key: "title", label: "Title", full: true },
+          {
+            key: "category",
+            label: "Category",
+            type: "select",
+            options: CATEGORIES.filter((c) => c !== "All"),
+          },
+          { key: "issuedBy", label: "Issued by" },
+          { key: "issuedOn", label: "Issued on", type: "date" },
+          { key: "notes", label: "Notes", type: "textarea" },
+        ]}
+        values={{
+          title: editing?.title ?? "",
+          category: editing?.category ?? "Other",
+          issuedBy: editing?.issuedBy ?? "",
+          issuedOn: editing?.issuedOn ? format(new Date(editing.issuedOn), "yyyy-MM-dd") : "",
+          notes: editing?.notes ?? "",
+        }}
+        onSave={(next) => {
+          if (!editing) return;
+          updateItem("records", editing.id, {
+            title: next["title"] ?? editing.title,
+            category: next["category"] ?? editing.category,
+            issuedBy: next["issuedBy"] ?? "",
+            issuedOn: next["issuedOn"] ? new Date(next["issuedOn"]).toISOString() : editing.issuedOn,
+            notes: next["notes"] ?? "",
+          } as never);
+          setEditing(null);
+          toast.success("Record updated");
+        }}
+      />
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>

@@ -1,11 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { ArrowLeftRight } from "lucide-react";
 import { PageHeader, Panel, SafetyNote } from "@/components/vitavyn/primitives";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { glucoseToMgdl, glucoseToMmol, kgToLb, lbToKg, cToF, fToC, round } from "@/lib/vitavyn/units";
+import {
+  glucoseToMgdl,
+  glucoseToMmol,
+  kgToLb,
+  lbToKg,
+  cToF,
+  fToC,
+  round,
+} from "@/lib/vitavyn/units";
 
 const a1cToAverageGlucose = (percent: number) => round(28.7 * percent - 46.7, 0);
+const averageGlucoseToA1c = (mgdl: number) => round((mgdl + 46.7) / 28.7, 1);
 
 export const Route = createFileRoute("/tools")({
   head: () => ({
@@ -13,75 +23,138 @@ export const Route = createFileRoute("/tools")({
       { title: "Health tools — Vitavyn" },
       {
         name: "description",
-        content: "Unit converters for glucose, weight and temperature, plus BMI and estimated average glucose.",
+        content:
+          "Two-way unit converters for glucose, weight and temperature, plus BMI and estimated average glucose.",
       },
       { property: "og:title", content: "Health tools — Vitavyn" },
-      { property: "og:description", content: "Converters and calculators that respect your preferred units." },
+      {
+        property: "og:description",
+        content: "Convert in either direction — type in whichever unit you have.",
+      },
     ],
   }),
   component: ToolsPage,
 });
 
+/** A converter where either side can be typed into; the other side follows. */
+function TwoWay({
+  title,
+  leftLabel,
+  rightLabel,
+  initialLeft,
+  toRight,
+  toLeft,
+  leftDigits = 1,
+  rightDigits = 1,
+  note,
+}: {
+  title: string;
+  leftLabel: string;
+  rightLabel: string;
+  initialLeft: string;
+  toRight: (n: number) => number;
+  toLeft: (n: number) => number;
+  leftDigits?: number;
+  rightDigits?: number;
+  note?: string;
+}) {
+  const [left, setLeft] = useState(initialLeft);
+  const [right, setRight] = useState(String(round(toRight(Number(initialLeft)), rightDigits)));
+
+  const onLeft = (v: string) => {
+    setLeft(v);
+    setRight(v === "" || Number.isNaN(Number(v)) ? "" : String(round(toRight(Number(v)), rightDigits)));
+  };
+  const onRight = (v: string) => {
+    setRight(v);
+    setLeft(v === "" || Number.isNaN(Number(v)) ? "" : String(round(toLeft(Number(v)), leftDigits)));
+  };
+
+  return (
+    <Panel title={title}>
+      <div className="flex items-end gap-3">
+        <div className="flex-1 space-y-1.5">
+          <Label>{leftLabel}</Label>
+          <Input
+            inputMode="decimal"
+            value={left}
+            onChange={(e) => onLeft(e.target.value)}
+            className="metric-value"
+          />
+        </div>
+        <ArrowLeftRight className="mb-3 h-4 w-4 shrink-0 text-muted-foreground" />
+        <div className="flex-1 space-y-1.5">
+          <Label>{rightLabel}</Label>
+          <Input
+            inputMode="decimal"
+            value={right}
+            onChange={(e) => onRight(e.target.value)}
+            className="metric-value"
+          />
+        </div>
+      </div>
+      {note ? <p className="mt-3 text-xs text-muted-foreground">{note}</p> : null}
+    </Panel>
+  );
+}
+
 function ToolsPage() {
-  const [glucose, setGlucose] = useState("120");
   const [weight, setWeight] = useState("72");
-  const [temp, setTemp] = useState("37");
-  const [a1c, setA1c] = useState("6.8");
   const [height, setHeight] = useState("175");
 
-  const bmi = Number(weight) > 0 && Number(height) > 0
-    ? (Number(weight) / (Number(height) / 100) ** 2).toFixed(1)
-    : "—";
+  const bmi =
+    Number(weight) > 0 && Number(height) > 0
+      ? (Number(weight) / (Number(height) / 100) ** 2).toFixed(1)
+      : "—";
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Health tools" description="Small calculators that save you a search." />
+      <PageHeader
+        title="Health tools"
+        description="Every converter works in both directions — type into whichever box you have a number for."
+      />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Panel title="Glucose converter">
-          <div className="space-y-1.5">
-            <Label>mg/dL</Label>
-            <Input inputMode="decimal" value={glucose} onChange={(e) => setGlucose(e.target.value)} />
-          </div>
-          <p className="mt-4 text-sm text-muted-foreground">
-            = <span className="metric-value text-base text-foreground">{round(glucoseToMmol(Number(glucose) || 0))}</span> mmol/L
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Reverse: 7.0 mmol/L = {round(glucoseToMgdl(7),0)} mg/dL
-          </p>
-        </Panel>
+        <TwoWay
+          title="Glucose converter"
+          leftLabel="mg/dL"
+          rightLabel="mmol/L"
+          initialLeft="120"
+          toRight={glucoseToMmol}
+          toLeft={glucoseToMgdl}
+          leftDigits={0}
+          rightDigits={1}
+        />
 
-        <Panel title="HbA1c → estimated average glucose">
-          <div className="space-y-1.5">
-            <Label>HbA1c (%)</Label>
-            <Input inputMode="decimal" value={a1c} onChange={(e) => setA1c(e.target.value)} />
-          </div>
-          <p className="mt-4 text-sm text-muted-foreground">
-            ≈ <span className="metric-value text-base text-foreground">{a1cToAverageGlucose(Number(a1c) || 0)}</span> mg/dL average
-          </p>
-        </Panel>
+        <TwoWay
+          title="HbA1c ↔ average glucose"
+          leftLabel="HbA1c (%)"
+          rightLabel="Average glucose (mg/dL)"
+          initialLeft="6.8"
+          toRight={a1cToAverageGlucose}
+          toLeft={averageGlucoseToA1c}
+          leftDigits={1}
+          rightDigits={0}
+          note="Estimated average glucose, using the standard ADAG relationship."
+        />
 
-        <Panel title="Weight converter">
-          <div className="space-y-1.5">
-            <Label>Kilograms</Label>
-            <Input inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} />
-          </div>
-          <p className="mt-4 text-sm text-muted-foreground">
-            = <span className="metric-value text-base text-foreground">{round(kgToLb(Number(weight) || 0))}</span> lb
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">Reverse: 160 lb = {round(lbToKg(160))} kg</p>
-        </Panel>
+        <TwoWay
+          title="Weight converter"
+          leftLabel="Kilograms"
+          rightLabel="Pounds"
+          initialLeft="72"
+          toRight={kgToLb}
+          toLeft={lbToKg}
+        />
 
-        <Panel title="Temperature converter">
-          <div className="space-y-1.5">
-            <Label>Celsius</Label>
-            <Input inputMode="decimal" value={temp} onChange={(e) => setTemp(e.target.value)} />
-          </div>
-          <p className="mt-4 text-sm text-muted-foreground">
-            = <span className="metric-value text-base text-foreground">{round(cToF(Number(temp) || 0))}</span> °F
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">Reverse: 100 °F = {round(fToC(100))} °C</p>
-        </Panel>
+        <TwoWay
+          title="Temperature converter"
+          leftLabel="Celsius"
+          rightLabel="Fahrenheit"
+          initialLeft="37"
+          toRight={cToF}
+          toLeft={fToC}
+        />
 
         <Panel title="BMI">
           <div className="grid gap-4 sm:grid-cols-2">

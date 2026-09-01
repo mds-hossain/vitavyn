@@ -60,6 +60,10 @@ export type Measurement = Stamped & {
   notes?: string;
 };
 
+export type SlotId = "morning" | "noon" | "evening" | "night";
+
+export type DoseSlot = { slot: SlotId; time: string };
+
 export type Medication = Stamped & {
   name: string;
   dose: string;
@@ -67,6 +71,7 @@ export type Medication = Stamped & {
   form: string;
   frequency: string;
   times: string[];
+  schedule?: DoseSlot[];
   startDate?: string;
   endDate?: string | null;
   conditionIds: ID[];
@@ -98,6 +103,7 @@ export type Provider = Stamped & {
   phone?: string;
   email?: string;
   address?: string;
+  website?: string;
 };
 
 export type Appointment = Stamped & {
@@ -107,6 +113,7 @@ export type Appointment = Stamped & {
   specialty: string;
   startsAt: string;
   location?: string;
+  website?: string;
   purpose?: string;
   questions: { id: ID; text: string; asked: boolean }[];
   notes?: string;
