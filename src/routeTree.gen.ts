@@ -12,6 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ConditionsRouteImport } from './routes/conditions'
 import { Route as HealthRouteImport } from './routes/health'
+import { Route as MeasurementsRouteImport } from './routes/measurements'
+import { Route as SymptomsRouteImport } from './routes/symptoms'
+import { Route as TimelineRouteImport } from './routes/timeline'
+import { Route as ConditionsConditionIdRouteImport } from './routes/conditions.$conditionId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -28,35 +32,92 @@ const HealthRoute = HealthRouteImport.update({
   path: '/health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MeasurementsRoute = MeasurementsRouteImport.update({
+  id: '/measurements',
+  path: '/measurements',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SymptomsRoute = SymptomsRouteImport.update({
+  id: '/symptoms',
+  path: '/symptoms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TimelineRoute = TimelineRouteImport.update({
+  id: '/timeline',
+  path: '/timeline',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConditionsConditionIdRoute = ConditionsConditionIdRouteImport.update({
+  id: '/$conditionId',
+  path: '/$conditionId',
+  getParentRoute: () => ConditionsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/conditions': typeof ConditionsRoute
+  '/conditions': typeof ConditionsRouteWithChildren
   '/health': typeof HealthRoute
+  '/measurements': typeof MeasurementsRoute
+  '/symptoms': typeof SymptomsRoute
+  '/timeline': typeof TimelineRoute
+  '/conditions/$conditionId': typeof ConditionsConditionIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/conditions': typeof ConditionsRoute
+  '/conditions': typeof ConditionsRouteWithChildren
   '/health': typeof HealthRoute
+  '/measurements': typeof MeasurementsRoute
+  '/symptoms': typeof SymptomsRoute
+  '/timeline': typeof TimelineRoute
+  '/conditions/$conditionId': typeof ConditionsConditionIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/conditions': typeof ConditionsRoute
+  '/conditions': typeof ConditionsRouteWithChildren
   '/health': typeof HealthRoute
+  '/measurements': typeof MeasurementsRoute
+  '/symptoms': typeof SymptomsRoute
+  '/timeline': typeof TimelineRoute
+  '/conditions/$conditionId': typeof ConditionsConditionIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/conditions' | '/health'
+  fullPaths:
+    | '/'
+    | '/conditions'
+    | '/health'
+    | '/measurements'
+    | '/symptoms'
+    | '/timeline'
+    | '/conditions/$conditionId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/conditions' | '/health'
-  id: '__root__' | '/' | '/conditions' | '/health'
+  to:
+    | '/'
+    | '/conditions'
+    | '/health'
+    | '/measurements'
+    | '/symptoms'
+    | '/timeline'
+    | '/conditions/$conditionId'
+  id:
+    | '__root__'
+    | '/'
+    | '/conditions'
+    | '/health'
+    | '/measurements'
+    | '/symptoms'
+    | '/timeline'
+    | '/conditions/$conditionId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ConditionsRoute: typeof ConditionsRoute
+  ConditionsRoute: typeof ConditionsRouteWithChildren
   HealthRoute: typeof HealthRoute
+  MeasurementsRoute: typeof MeasurementsRoute
+  SymptomsRoute: typeof SymptomsRoute
+  TimelineRoute: typeof TimelineRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -82,13 +143,56 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/measurements': {
+      id: '/measurements'
+      path: '/measurements'
+      fullPath: '/measurements'
+      preLoaderRoute: typeof MeasurementsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/symptoms': {
+      id: '/symptoms'
+      path: '/symptoms'
+      fullPath: '/symptoms'
+      preLoaderRoute: typeof SymptomsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/timeline': {
+      id: '/timeline'
+      path: '/timeline'
+      fullPath: '/timeline'
+      preLoaderRoute: typeof TimelineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/conditions/$conditionId': {
+      id: '/conditions/$conditionId'
+      path: '/$conditionId'
+      fullPath: '/conditions/$conditionId'
+      preLoaderRoute: typeof ConditionsConditionIdRouteImport
+      parentRoute: typeof ConditionsRoute
+    }
   }
 }
 
+interface ConditionsRouteChildren {
+  ConditionsConditionIdRoute: typeof ConditionsConditionIdRoute
+}
+
+const ConditionsRouteChildren: ConditionsRouteChildren = {
+  ConditionsConditionIdRoute: ConditionsConditionIdRoute,
+}
+
+const ConditionsRouteWithChildren = ConditionsRoute._addFileChildren(
+  ConditionsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ConditionsRoute: ConditionsRoute,
+  ConditionsRoute: ConditionsRouteWithChildren,
   HealthRoute: HealthRoute,
+  MeasurementsRoute: MeasurementsRoute,
+  SymptomsRoute: SymptomsRoute,
+  TimelineRoute: TimelineRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
