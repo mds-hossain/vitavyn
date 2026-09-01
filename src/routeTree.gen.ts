@@ -13,14 +13,19 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppointmentsRouteImport } from './routes/appointments'
 import { Route as ConditionsRouteImport } from './routes/conditions'
 import { Route as DoctorsRouteImport } from './routes/doctors'
+import { Route as EmergencyRouteImport } from './routes/emergency'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as InsightsRouteImport } from './routes/insights'
 import { Route as LabsRouteImport } from './routes/labs'
 import { Route as MeasurementsRouteImport } from './routes/measurements'
 import { Route as MedicationsRouteImport } from './routes/medications'
 import { Route as NutritionRouteImport } from './routes/nutrition'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as PlansRouteImport } from './routes/plans'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RecordsRouteImport } from './routes/records'
 import { Route as ReportRouteImport } from './routes/report'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SymptomsRouteImport } from './routes/symptoms'
 import { Route as TimelineRouteImport } from './routes/timeline'
 import { Route as ToolsRouteImport } from './routes/tools'
@@ -45,6 +50,11 @@ const ConditionsRoute = ConditionsRouteImport.update({
 const DoctorsRoute = DoctorsRouteImport.update({
   id: '/doctors',
   path: '/doctors',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmergencyRoute = EmergencyRouteImport.update({
+  id: '/emergency',
+  path: '/emergency',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HealthRoute = HealthRouteImport.update({
@@ -77,6 +87,21 @@ const NutritionRoute = NutritionRouteImport.update({
   path: '/nutrition',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlansRoute = PlansRouteImport.update({
+  id: '/plans',
+  path: '/plans',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RecordsRoute = RecordsRouteImport.update({
   id: '/records',
   path: '/records',
@@ -85,6 +110,11 @@ const RecordsRoute = RecordsRouteImport.update({
 const ReportRoute = ReportRouteImport.update({
   id: '/report',
   path: '/report',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SymptomsRoute = SymptomsRouteImport.update({
@@ -119,14 +149,19 @@ export interface FileRoutesByFullPath {
   '/appointments': typeof AppointmentsRouteWithChildren
   '/conditions': typeof ConditionsRouteWithChildren
   '/doctors': typeof DoctorsRoute
+  '/emergency': typeof EmergencyRoute
   '/health': typeof HealthRoute
   '/insights': typeof InsightsRoute
   '/labs': typeof LabsRoute
   '/measurements': typeof MeasurementsRoute
   '/medications': typeof MedicationsRoute
   '/nutrition': typeof NutritionRoute
+  '/onboarding': typeof OnboardingRoute
+  '/plans': typeof PlansRoute
+  '/privacy': typeof PrivacyRoute
   '/records': typeof RecordsRoute
   '/report': typeof ReportRoute
+  '/settings': typeof SettingsRoute
   '/symptoms': typeof SymptomsRoute
   '/timeline': typeof TimelineRoute
   '/tools': typeof ToolsRoute
@@ -138,14 +173,19 @@ export interface FileRoutesByTo {
   '/appointments': typeof AppointmentsRouteWithChildren
   '/conditions': typeof ConditionsRouteWithChildren
   '/doctors': typeof DoctorsRoute
+  '/emergency': typeof EmergencyRoute
   '/health': typeof HealthRoute
   '/insights': typeof InsightsRoute
   '/labs': typeof LabsRoute
   '/measurements': typeof MeasurementsRoute
   '/medications': typeof MedicationsRoute
   '/nutrition': typeof NutritionRoute
+  '/onboarding': typeof OnboardingRoute
+  '/plans': typeof PlansRoute
+  '/privacy': typeof PrivacyRoute
   '/records': typeof RecordsRoute
   '/report': typeof ReportRoute
+  '/settings': typeof SettingsRoute
   '/symptoms': typeof SymptomsRoute
   '/timeline': typeof TimelineRoute
   '/tools': typeof ToolsRoute
@@ -158,14 +198,19 @@ export interface FileRoutesById {
   '/appointments': typeof AppointmentsRouteWithChildren
   '/conditions': typeof ConditionsRouteWithChildren
   '/doctors': typeof DoctorsRoute
+  '/emergency': typeof EmergencyRoute
   '/health': typeof HealthRoute
   '/insights': typeof InsightsRoute
   '/labs': typeof LabsRoute
   '/measurements': typeof MeasurementsRoute
   '/medications': typeof MedicationsRoute
   '/nutrition': typeof NutritionRoute
+  '/onboarding': typeof OnboardingRoute
+  '/plans': typeof PlansRoute
+  '/privacy': typeof PrivacyRoute
   '/records': typeof RecordsRoute
   '/report': typeof ReportRoute
+  '/settings': typeof SettingsRoute
   '/symptoms': typeof SymptomsRoute
   '/timeline': typeof TimelineRoute
   '/tools': typeof ToolsRoute
@@ -179,14 +224,19 @@ export interface FileRouteTypes {
     | '/appointments'
     | '/conditions'
     | '/doctors'
+    | '/emergency'
     | '/health'
     | '/insights'
     | '/labs'
     | '/measurements'
     | '/medications'
     | '/nutrition'
+    | '/onboarding'
+    | '/plans'
+    | '/privacy'
     | '/records'
     | '/report'
+    | '/settings'
     | '/symptoms'
     | '/timeline'
     | '/tools'
@@ -198,14 +248,19 @@ export interface FileRouteTypes {
     | '/appointments'
     | '/conditions'
     | '/doctors'
+    | '/emergency'
     | '/health'
     | '/insights'
     | '/labs'
     | '/measurements'
     | '/medications'
     | '/nutrition'
+    | '/onboarding'
+    | '/plans'
+    | '/privacy'
     | '/records'
     | '/report'
+    | '/settings'
     | '/symptoms'
     | '/timeline'
     | '/tools'
@@ -217,14 +272,19 @@ export interface FileRouteTypes {
     | '/appointments'
     | '/conditions'
     | '/doctors'
+    | '/emergency'
     | '/health'
     | '/insights'
     | '/labs'
     | '/measurements'
     | '/medications'
     | '/nutrition'
+    | '/onboarding'
+    | '/plans'
+    | '/privacy'
     | '/records'
     | '/report'
+    | '/settings'
     | '/symptoms'
     | '/timeline'
     | '/tools'
@@ -237,14 +297,19 @@ export interface RootRouteChildren {
   AppointmentsRoute: typeof AppointmentsRouteWithChildren
   ConditionsRoute: typeof ConditionsRouteWithChildren
   DoctorsRoute: typeof DoctorsRoute
+  EmergencyRoute: typeof EmergencyRoute
   HealthRoute: typeof HealthRoute
   InsightsRoute: typeof InsightsRoute
   LabsRoute: typeof LabsRoute
   MeasurementsRoute: typeof MeasurementsRoute
   MedicationsRoute: typeof MedicationsRoute
   NutritionRoute: typeof NutritionRoute
+  OnboardingRoute: typeof OnboardingRoute
+  PlansRoute: typeof PlansRoute
+  PrivacyRoute: typeof PrivacyRoute
   RecordsRoute: typeof RecordsRoute
   ReportRoute: typeof ReportRoute
+  SettingsRoute: typeof SettingsRoute
   SymptomsRoute: typeof SymptomsRoute
   TimelineRoute: typeof TimelineRoute
   ToolsRoute: typeof ToolsRoute
@@ -278,6 +343,13 @@ declare module '@tanstack/react-router' {
       path: '/doctors'
       fullPath: '/doctors'
       preLoaderRoute: typeof DoctorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/emergency': {
+      id: '/emergency'
+      path: '/emergency'
+      fullPath: '/emergency'
+      preLoaderRoute: typeof EmergencyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/health': {
@@ -322,6 +394,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NutritionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/plans': {
+      id: '/plans'
+      path: '/plans'
+      fullPath: '/plans'
+      preLoaderRoute: typeof PlansRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/records': {
       id: '/records'
       path: '/records'
@@ -334,6 +427,13 @@ declare module '@tanstack/react-router' {
       path: '/report'
       fullPath: '/report'
       preLoaderRoute: typeof ReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/symptoms': {
@@ -403,14 +503,19 @@ const rootRouteChildren: RootRouteChildren = {
   AppointmentsRoute: AppointmentsRouteWithChildren,
   ConditionsRoute: ConditionsRouteWithChildren,
   DoctorsRoute: DoctorsRoute,
+  EmergencyRoute: EmergencyRoute,
   HealthRoute: HealthRoute,
   InsightsRoute: InsightsRoute,
   LabsRoute: LabsRoute,
   MeasurementsRoute: MeasurementsRoute,
   MedicationsRoute: MedicationsRoute,
   NutritionRoute: NutritionRoute,
+  OnboardingRoute: OnboardingRoute,
+  PlansRoute: PlansRoute,
+  PrivacyRoute: PrivacyRoute,
   RecordsRoute: RecordsRoute,
   ReportRoute: ReportRoute,
+  SettingsRoute: SettingsRoute,
   SymptomsRoute: SymptomsRoute,
   TimelineRoute: TimelineRoute,
   ToolsRoute: ToolsRoute,
