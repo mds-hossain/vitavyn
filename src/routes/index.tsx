@@ -1,12 +1,27 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { format } from "date-fns";
-import { CalendarDays, CheckCircle2, Circle, Plus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { format, formatDistanceToNowStrict, isSameDay, isTomorrow } from "date-fns";
+import {
+  AlertCircle,
+  CalendarDays,
+  CheckCircle2,
+  ChevronRight,
+  Clock,
+  Pill,
+  Plus,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MetricTile, Panel, SafetyNote, StatusPill } from "@/components/vitavyn/primitives";
+import { Panel, SafetyNote, StatusPill } from "@/components/vitavyn/primitives";
+import { MeasurementCard } from "@/components/vitavyn/MeasurementCard";
 import { QuickAdd } from "@/components/vitavyn/QuickAdd";
-import { latestMeasurement, useVitavyn } from "@/lib/vitavyn/store";
-import { formatGlucose, formatWeight, glucoseToMmol, round } from "@/lib/vitavyn/units";
+import { buildTimeline, useVitavyn } from "@/lib/vitavyn/store";
+import {
+  KIND_LABELS,
+  doseState,
+  measurementsOfKind,
+  relevantKinds,
+  todaysDoses,
+} from "@/lib/vitavyn/personalize";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -15,20 +30,19 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Your day at a glance: scheduled medications, due measurements, upcoming appointments and quick logging.",
+          "Your day at a glance: what needs attention, medication progress, measurements due and upcoming appointments.",
       },
       { property: "og:title", content: "Today — Vitavyn" },
       {
         property: "og:description",
-        content: "Medications, measurements and appointments that matter to you today.",
+        content: "See what needs your attention today and record it in a couple of taps.",
       },
     ],
   }),
   component: TodayPage,
 });
 
-function greeting() {
-  const hour = new Date().getHours();
+function greeting(hour: number) {
   if (hour < 12) return "Good morning";
   if (hour < 18) return "Good afternoon";
   return "Good evening";
@@ -37,34 +51,53 @@ function greeting() {
 function TodayPage() {
   const { data, update } = useVitavyn();
   const [addOpen, setAddOpen] = useState(false);
+  const [now, setNow] = useState<Date | null>(null);
+
+  useEffect(() => {
+    setNow(new Date());
+    const id = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(id);
+  }, []);
+
   const firstName = data.profile.name.split(" ")[0] ?? "";
+  const reference = now ?? new Date();
 
-  const glucose = latestMeasurement(data, "glucose");
-  const bp = latestMeasurement(data, "blood_pressure");
-  const weight = latestMeasurement(data, "weight");
+  const doses = todaysDoses(data, reference);
+  const recorded = doses.filter((d) => d.status === "recorded").length;
+  const pending = doses.filter((d) => d.status === "pending");
+  const dueNow = pending.filter((d) => doseState(d, reference) === "due");
 
-  const todayKey = new Date().toDateString();
-  const doses = data.medications
-    .flatMap((med) =>
-      med.times.map((time) => {
-        const [h, m] = time.split(":");
-        const scheduled = new Date();
-        scheduled.setHours(Number(h), Number(m ?? 0), 0, 0);
-        const recorded = data.medicationLogs.some(
-          (log) =>
-            log.medicationId === med.id &&
-            new Date(log.scheduledFor).toDateString() === todayKey &&
-            Math.abs(new Date(log.scheduledFor).getHours() - Number(h)) <= 1 &&
-            log.status === "recorded",
-        );
-        return { med, time, scheduled, recorded };
-      }),
-    )
-    .sort((a, b) => a.scheduled.getTime() - b.scheduled.getTime());
+  const kinds = relevantKinds(data);
+  const staleKinds = kinds.filter((kind) => {
+    const latest = measurementsOfKind(data, kind)[0];
+    return !latest || !isSameDay(new Date(latest.takenAt), reference);
+  });
 
   const nextAppointment = data.appointments
-    .filter((a) => a.status === "upcoming" && new Date(a.startsAt) >= new Date(Date.now() - 36e5))
+    .filter((a) => a.status === "upcoming" && new Date(a.startsAt) >= new Date(reference.getTime() - 36e5))
     .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())[0];
+
+  const attention: { icon: typeof Pill; text: string; to: string }[] = [];
+  if (dueNow.length > 0)
+    attention.push({
+      icon: Pill,
+      text: `${dueNow.length} medication ${dueNow.length === 1 ? "dose" : "doses"} to record`,
+      to: "/medications",
+    });
+  if (staleKinds.length > 0)
+    attention.push({
+      icon: Clock,
+      text: `${staleKinds.map((k) => KIND_LABELS[k] ?? k).join(", ")} not recorded today`,
+      to: "/measurements",
+    });
+  if (nextAppointment && isTomorrow(new Date(nextAppointment.startsAt)))
+    attention.push({
+      icon: CalendarDays,
+      text: `Appointment tomorrow with ${nextAppointment.providerName}`,
+      to: "/appointments",
+    });
+
+  const recentEvents = buildTimeline(data).slice(0, 5);
 
   const recordDose = (medicationId: string, scheduled: Date) => {
     update((draft) => {
@@ -84,144 +117,168 @@ function TodayPage() {
   return (
     <div className="space-y-6">
       <header>
-        <p className="text-sm text-muted-foreground">{format(new Date(), "EEEE, MMMM d")}</p>
-        <h1 className="mt-1 text-3xl font-semibold sm:text-4xl">
-          {greeting()}, {firstName}
+        <p className="text-sm text-muted-foreground">
+          {now ? format(now, "EEEE, MMMM d") : "\u00a0"}
+        </p>
+        <h1 className="mt-1 text-2xl font-semibold sm:text-3xl">
+          {greeting(reference.getHours())}, {firstName}
         </h1>
       </header>
 
-      <Panel title="Today's overview">
-        <div className="grid gap-3 sm:grid-cols-3">
-          <Overview value={`${doses.length}`} label="medications scheduled" />
-          <Overview
-            value={`${data.conditions.filter((c) => c.status === "active").length}`}
-            label="conditions being tracked"
-          />
-          <Overview value={nextAppointment ? "1" : "0"} label="upcoming appointment" />
+      <Panel title="Your health today">
+        {attention.length === 0 ? (
+          <div className="flex items-center gap-3 rounded-xl bg-success/10 px-4 py-3 text-sm">
+            <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
+            <span>Nothing needs your attention right now.</span>
+          </div>
+        ) : (
+          <>
+            <p className="text-base font-medium">
+              {attention.length} {attention.length === 1 ? "thing needs" : "things need"} your attention
+            </p>
+            <ul className="mt-3 space-y-2">
+              {attention.map((item) => (
+                <li key={item.text}>
+                  <Link
+                    to={item.to}
+                    className="flex items-center gap-3 rounded-xl border border-border bg-background/60 px-4 py-3 text-sm transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]"
+                  >
+                    <item.icon className="h-4 w-4 shrink-0 text-primary" />
+                    <span className="min-w-0 flex-1">{item.text}</span>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border border-border px-4 py-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium">Medications</span>
+              <span className="text-muted-foreground">
+                {recorded} of {doses.length} recorded
+              </span>
+            </div>
+            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted" role="presentation">
+              <div
+                className="h-full rounded-full bg-primary transition-all"
+                style={{ width: `${doses.length ? (recorded / doses.length) * 100 : 0}%` }}
+              />
+            </div>
+          </div>
+          <div className="rounded-xl border border-border px-4 py-3 text-sm">
+            <span className="font-medium">Next appointment</span>
+            <p className="mt-1 text-muted-foreground">
+              {nextAppointment
+                ? `${nextAppointment.providerName} · ${format(new Date(nextAppointment.startsAt), "MMM d, HH:mm")}`
+                : "Nothing scheduled"}
+            </p>
+          </div>
         </div>
       </Panel>
 
-      <Panel
-        title="Today's measurements"
-        action={
-          <Button variant="ghost" size="sm" onClick={() => setAddOpen(true)}>
-            <Plus className="h-4 w-4" /> Log
-          </Button>
-        }
-      >
-        <div className="grid gap-3 sm:grid-cols-3">
-          {glucose ? (
-            <MetricTile
-              label="Blood glucose"
-              value={formatGlucose(glucose.value, data.preferences.glucoseUnit)}
-              secondary={
-                data.preferences.glucoseUnit === "mg/dL"
-                  ? `${round(glucoseToMmol(glucose.value), 1)} mmol/L`
-                  : `${round(glucose.value, 0)} mg/dL`
-              }
-              context={`${glucose.context ?? ""} · ${format(new Date(glucose.takenAt), "MMM d, HH:mm")}`}
-            />
-          ) : null}
-          {bp ? (
-            <MetricTile
-              label="Blood pressure"
-              value={`${bp.value} / ${bp.secondaryValue}`}
-              secondary="mmHg"
-              context={format(new Date(bp.takenAt), "MMM d, HH:mm")}
-            />
-          ) : null}
-          {weight ? (
-            <MetricTile
-              label="Weight"
-              value={formatWeight(weight.value, data.preferences.weightUnit)}
-              context={format(new Date(weight.takenAt), "MMM d")}
-            />
-          ) : null}
-        </div>
-      </Panel>
+      {kinds.length > 0 ? (
+        <Panel
+          title="Your measurements"
+          action={
+            <Button variant="ghost" size="sm" onClick={() => setAddOpen(true)}>
+              <Plus className="h-4 w-4" /> Log
+            </Button>
+          }
+        >
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {kinds.map((kind) => (
+              <MeasurementCard
+                key={kind}
+                kind={kind}
+                measurements={measurementsOfKind(data, kind)}
+                prefs={data.preferences}
+              />
+            ))}
+          </div>
+        </Panel>
+      ) : null}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Panel title="Today's medications">
           <ul className="space-y-2">
-            {doses.map(({ med, time, scheduled, recorded }) => (
-              <li
-                key={med.id + time}
-                className="flex items-center justify-between gap-3 rounded-xl border border-border px-4 py-3"
-              >
-                <div>
-                  <p className="metric-value text-lg">{time}</p>
-                  <p className="text-sm font-medium">
-                    {med.name} {med.dose}
-                    {med.unit}
-                  </p>
-                </div>
-                {recorded ? (
-                  <StatusPill tone="success">
-                    <CheckCircle2 className="h-3.5 w-3.5" /> Recorded
-                  </StatusPill>
-                ) : (
-                  <Button size="sm" variant="outline" onClick={() => recordDose(med.id, scheduled)}>
-                    <Circle className="h-3.5 w-3.5" /> Record dose
-                  </Button>
-                )}
-              </li>
-            ))}
+            {doses.map((dose) => {
+              const state = doseState(dose, reference);
+              return (
+                <li
+                  key={dose.medicationId + dose.time}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-border px-4 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="metric-value text-base">{dose.time}</p>
+                    <p className="truncate text-sm font-medium">
+                      {dose.name} {dose.dose}
+                      {dose.unit}
+                    </p>
+                  </div>
+                  {state === "recorded" ? (
+                    <StatusPill tone="success">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Recorded
+                    </StatusPill>
+                  ) : state === "not-taken" ? (
+                    <StatusPill tone="warning">
+                      <AlertCircle className="h-3.5 w-3.5" /> Not taken
+                    </StatusPill>
+                  ) : state === "due" ? (
+                    <Button size="sm" onClick={() => recordDose(dose.medicationId, dose.scheduled)}>
+                      Record dose
+                    </Button>
+                  ) : (
+                    <StatusPill>
+                      <Clock className="h-3.5 w-3.5" /> In{" "}
+                      {formatDistanceToNowStrict(dose.scheduled)}
+                    </StatusPill>
+                  )}
+                </li>
+              );
+            })}
             {doses.length === 0 ? (
               <p className="text-sm text-muted-foreground">No medications scheduled today.</p>
             ) : null}
           </ul>
         </Panel>
 
-        <div className="space-y-6">
-          <Panel title="Upcoming appointment">
-            {nextAppointment ? (
-              <div className="space-y-3">
-                <div>
-                  <p className="font-display text-lg font-semibold">{nextAppointment.providerName}</p>
-                  <p className="text-sm text-muted-foreground">{nextAppointment.specialty}</p>
+        <Panel
+          title="Recent activity"
+          action={
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/timeline">Timeline</Link>
+            </Button>
+          }
+        >
+          <ul className="divide-y divide-border">
+            {recentEvents.map((event) => (
+              <li key={event.type + event.id} className="flex items-start gap-3 py-3">
+                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" aria-hidden />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{event.title}</p>
+                  <p className="truncate text-xs text-muted-foreground">{event.detail}</p>
                 </div>
-                <p className="flex items-center gap-2 text-sm">
-                  <CalendarDays className="h-4 w-4 text-primary" />
-                  {format(new Date(nextAppointment.startsAt), "EEEE, MMM d · HH:mm")}
-                </p>
-                <Button asChild variant="outline" size="sm">
-                  <Link to="/appointments/$appointmentId" params={{ appointmentId: nextAppointment.id }}>
-                    View appointment
-                  </Link>
-                </Button>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Nothing scheduled yet.</p>
-            )}
-          </Panel>
-
-          <Panel title="Quick actions">
-            <div className="grid gap-2 sm:grid-cols-2">
-              {["Log glucose", "Log blood pressure", "Add medication", "Add appointment"].map((action) => (
-                <Button key={action} variant="outline" className="justify-start" onClick={() => setAddOpen(true)}>
-                  <Plus className="h-4 w-4" /> {action}
-                </Button>
-              ))}
-            </div>
-          </Panel>
-        </div>
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {format(new Date(event.at), "MMM d")}
+                </span>
+              </li>
+            ))}
+            {recentEvents.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nothing recorded yet.</p>
+            ) : null}
+          </ul>
+        </Panel>
       </div>
 
       <SafetyNote>
-        Vitavyn organises information you record yourself. It does not diagnose conditions or
-        adjust treatment. Demonstration data shown here is fictional.
+        Vitavyn organises information you record yourself. It does not diagnose conditions or adjust
+        treatment. Demonstration data shown here is fictional.
       </SafetyNote>
 
       <QuickAdd open={addOpen} onOpenChange={setAddOpen} />
-    </div>
-  );
-}
-
-function Overview({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="rounded-xl bg-accent/60 px-4 py-3">
-      <span className="metric-value text-2xl text-accent-foreground">{value}</span>
-      <p className="mt-1 text-sm text-muted-foreground">{label}</p>
     </div>
   );
 }
