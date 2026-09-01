@@ -44,9 +44,10 @@ export function Panel({
       {title || action ? (
         <div className="mb-4 flex items-center justify-between gap-3">
           {title ? (
-            <h2 className="font-display text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <h2 className="font-display text-sm font-semibold text-muted-foreground">
               {title}
             </h2>
+
           ) : (
             <span />
           )}
