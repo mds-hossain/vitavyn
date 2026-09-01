@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Mail, MapPin, Phone, Plus, Trash2 } from "lucide-react";
+import { Globe, Mail, MapPin, Pencil, Phone, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { EmptyState, PageHeader, Panel } from "@/components/vitavyn/primitives";
+import { AddressAutocomplete } from "@/components/vitavyn/AddressAutocomplete";
 import { useVitavyn } from "@/lib/vitavyn/store";
+import type { Provider } from "@/lib/vitavyn/types";
 
 export const Route = createFileRoute("/doctors")({
   head: () => ({
@@ -30,20 +32,58 @@ export const Route = createFileRoute("/doctors")({
   component: DoctorsPage,
 });
 
+const empty = {
+  name: "",
+  specialty: "",
+  clinic: "",
+  phone: "",
+  email: "",
+  address: "",
+  website: "",
+};
+
 function DoctorsPage() {
-  const { data, add, remove } = useVitavyn();
+  const { data, add, remove, updateItem } = useVitavyn();
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", specialty: "", clinic: "", phone: "", email: "", address: "" });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState(empty);
+
+  const openAdd = () => {
+    setEditingId(null);
+    setForm(empty);
+    setOpen(true);
+  };
+
+  const openEdit = (provider: Provider) => {
+    setEditingId(provider.id);
+    setForm({
+      name: provider.name,
+      specialty: provider.specialty ?? "",
+      clinic: provider.clinic ?? "",
+      phone: provider.phone ?? "",
+      email: provider.email ?? "",
+      address: provider.address ?? "",
+      website: provider.website ?? "",
+    });
+    setOpen(true);
+  };
 
   const save = () => {
     if (!form.name.trim()) {
       toast.error("Name is required");
       return;
     }
-    add("providers", { ...form, name: form.name.trim() } as never);
-    setForm({ name: "", specialty: "", clinic: "", phone: "", email: "", address: "" });
+    const payload = { ...form, name: form.name.trim() };
+    if (editingId) {
+      updateItem("providers", editingId, payload as never);
+      toast.success("Provider updated");
+    } else {
+      add("providers", payload as never);
+      toast.success("Added to your care team");
+    }
+    setForm(empty);
+    setEditingId(null);
     setOpen(false);
-    toast.success("Added to your care team");
   };
 
   return (
@@ -52,7 +92,7 @@ function DoctorsPage() {
         title="Care team"
         description="Doctors, specialists and clinics you work with."
         actions={
-          <Button onClick={() => setOpen(true)}>
+          <Button onClick={openAdd}>
             <Plus className="h-4 w-4" /> Add provider
           </Button>
         }
@@ -70,14 +110,24 @@ function DoctorsPage() {
                   <p className="text-sm text-muted-foreground">{provider.specialty}</p>
                   {provider.clinic ? <p className="text-sm text-muted-foreground">{provider.clinic}</p> : null}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={`Remove ${provider.name}`}
-                  onClick={() => remove("providers", provider.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <div className="flex shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Edit ${provider.name}`}
+                    onClick={() => openEdit(provider)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Remove ${provider.name}`}
+                    onClick={() => remove("providers", provider.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
               <ul className="mt-4 space-y-1.5 text-sm text-muted-foreground">
                 {provider.phone ? (
@@ -90,9 +140,22 @@ function DoctorsPage() {
                     <Mail className="h-4 w-4" /> {provider.email}
                   </li>
                 ) : null}
-                {provider.address ? (
+                {provider.website ? (
                   <li className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4" /> {provider.address}
+                    <Globe className="h-4 w-4" />
+                    <a
+                      href={provider.website}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="underline underline-offset-2"
+                    >
+                      {provider.website.replace(/^https?:\/\//, "")}
+                    </a>
+                  </li>
+                ) : null}
+                {provider.address ? (
+                  <li className="flex items-start gap-2">
+                    <MapPin className="mt-0.5 h-4 w-4 shrink-0" /> {provider.address}
                   </li>
                 ) : null}
               </ul>
@@ -102,9 +165,9 @@ function DoctorsPage() {
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[92vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add provider</DialogTitle>
+            <DialogTitle>{editingId ? "Edit provider" : "Add provider"}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 sm:grid-cols-2">
             {(
@@ -114,7 +177,7 @@ function DoctorsPage() {
                 ["clinic", "Clinic"],
                 ["phone", "Phone"],
                 ["email", "Email"],
-                ["address", "Address"],
+                ["website", "Website"],
               ] as const
             ).map(([key, label]) => (
               <div key={key} className="space-y-1.5">
@@ -122,9 +185,15 @@ function DoctorsPage() {
                 <Input value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} />
               </div>
             ))}
+            <div className="sm:col-span-2">
+              <AddressAutocomplete
+                value={form.address}
+                onChange={(address) => setForm({ ...form, address })}
+              />
+            </div>
           </div>
           <DialogFooter>
-            <Button onClick={save}>Save provider</Button>
+            <Button onClick={save}>{editingId ? "Save changes" : "Save provider"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
