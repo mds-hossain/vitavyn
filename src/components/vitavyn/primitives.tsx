@@ -7,8 +7,8 @@ export function PageHeader({
   actions,
 }: {
   title: string;
-  description?: string;
-  actions?: ReactNode;
+  description?: string | undefined;
+  actions?: ReactNode | undefined;
 }) {
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
@@ -30,9 +30,9 @@ export function Panel({
   action,
 }: {
   children: ReactNode;
-  className?: string;
-  title?: string;
-  action?: ReactNode;
+  className?: string | undefined;
+  title?: string | undefined;
+  action?: ReactNode | undefined;
 }) {
   return (
     <section
@@ -61,15 +61,17 @@ export function Panel({
 export function MetricTile({
   label,
   value,
+  unit,
   secondary,
   context,
   tone = "neutral",
 }: {
   label: string;
   value: string;
-  secondary?: string;
-  context?: string;
-  tone?: "neutral" | "success" | "warning" | "attention";
+  unit?: string | undefined;
+  secondary?: string | undefined;
+  context?: string | undefined;
+  tone?: "neutral" | "success" | "warning" | "attention" | undefined;
 }) {
   const toneClass = {
     neutral: "text-foreground",
@@ -81,7 +83,10 @@ export function MetricTile({
   return (
     <div className="rounded-xl border border-border bg-background/60 p-4">
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className={cn("metric-value mt-2 text-3xl", toneClass)}>{value}</p>
+      <p className={cn("metric-value mt-2 text-3xl", toneClass)}>
+        {value}
+        {unit ? <span className="ml-1 text-base text-muted-foreground">{unit}</span> : null}
+      </p>
       {secondary ? <p className="mt-1 text-sm text-muted-foreground">{secondary}</p> : null}
       {context ? <p className="mt-2 text-xs text-muted-foreground">{context}</p> : null}
     </div>
@@ -95,7 +100,7 @@ export function EmptyState({
 }: {
   title: string;
   description: string;
-  action?: ReactNode;
+  action?: ReactNode | undefined;
 }) {
   return (
     <div className="rounded-2xl border border-dashed border-border bg-surface/60 px-6 py-12 text-center">
@@ -111,7 +116,7 @@ export function StatusPill({
   tone = "neutral",
 }: {
   children: ReactNode;
-  tone?: "neutral" | "success" | "warning" | "attention" | "brand";
+  tone?: "neutral" | "success" | "warning" | "attention" | "brand" | undefined;
 }) {
   const map = {
     neutral: "bg-muted text-muted-foreground",

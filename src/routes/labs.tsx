@@ -58,7 +58,7 @@ function LabsPage() {
                       <span className="metric-value text-base">
                         {lab.value} {lab.unit}
                       </span>
-                      <StatusPill tone={outOfRange ? "attention" : "positive"}>
+                      <StatusPill tone={outOfRange ? "attention" : "success"}>
                         {outOfRange ? "Outside range" : "In range"}
                       </StatusPill>
                     </div>

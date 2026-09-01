@@ -133,7 +133,7 @@ function MedicationsPage() {
                   </div>
                 </div>
                 {log ? (
-                  <StatusPill tone={log.status === "recorded" ? "positive" : "neutral"}>
+                  <StatusPill tone={log.status === "recorded" ? "success" : "neutral"}>
                     {log.status === "recorded" ? "Recorded" : "Skipped"}
                   </StatusPill>
                 ) : (
