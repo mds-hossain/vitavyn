@@ -43,24 +43,56 @@ const PRIMARY_NAV: NavItem[] = [
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
-const MORE_NAV: NavItem[] = [
-  { to: "/conditions", label: "Conditions", icon: Activity },
-  { to: "/measurements", label: "Measurements", icon: ChartLine },
-  { to: "/symptoms", label: "Symptoms", icon: ClipboardList },
-  { to: "/timeline", label: "Timeline", icon: CalendarDays },
-  { to: "/medications", label: "Medications", icon: Pill },
-  { to: "/nutrition", label: "Nutrition", icon: UtensilsCrossed },
-  { to: "/doctors", label: "Doctors", icon: Stethoscope },
-  { to: "/records", label: "Records", icon: FileText },
-  { to: "/labs", label: "Lab results", icon: FlaskConical },
-  { to: "/insights", label: "Insights", icon: ChartLine },
-  { to: "/report", label: "Health report", icon: FileText },
-  { to: "/emergency", label: "Emergency card", icon: Siren },
-  { to: "/tools", label: "Tools", icon: Wrench },
-  { to: "/plans", label: "Plans & storage", icon: BadgeCheck },
-  { to: "/privacy", label: "Data & Privacy", icon: ShieldCheck },
-  { to: "/settings", label: "Settings", icon: Settings },
+const MORE_SECTIONS: { heading: string; items: NavItem[] }[] = [
+  {
+    heading: "Health",
+    items: [
+      { to: "/conditions", label: "Conditions", icon: Activity },
+      { to: "/measurements", label: "Measurements", icon: ChartLine },
+      { to: "/symptoms", label: "Symptoms", icon: ClipboardList },
+      { to: "/timeline", label: "Timeline", icon: CalendarDays },
+    ],
+  },
+  {
+    heading: "Care",
+    items: [
+      { to: "/medications", label: "Medications", icon: Pill },
+      { to: "/appointments", label: "Appointments", icon: CalendarDays },
+      { to: "/doctors", label: "Doctors", icon: Stethoscope },
+    ],
+  },
+  {
+    heading: "Records",
+    items: [
+      { to: "/records", label: "Medical records", icon: FileText },
+      { to: "/labs", label: "Lab results", icon: FlaskConical },
+    ],
+  },
+  {
+    heading: "Wellness",
+    items: [
+      { to: "/nutrition", label: "Nutrition", icon: UtensilsCrossed },
+      { to: "/insights", label: "Insights", icon: ChartLine },
+    ],
+  },
+  {
+    heading: "Tools",
+    items: [
+      { to: "/report", label: "Health report", icon: FileText },
+      { to: "/emergency", label: "Emergency card", icon: Siren },
+      { to: "/tools", label: "Unit converters", icon: Wrench },
+    ],
+  },
+  {
+    heading: "Account",
+    items: [
+      { to: "/plans", label: "Plans & storage", icon: BadgeCheck },
+      { to: "/privacy", label: "Data & Privacy", icon: ShieldCheck },
+      { to: "/settings", label: "Settings", icon: Settings },
+    ],
+  },
 ];
+
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [addOpen, setAddOpen] = useState(false);
@@ -134,19 +166,29 @@ export function AppShell({ children }: { children: ReactNode }) {
               <SheetHeader className="text-left">
                 <SheetTitle>Hello, {firstName}</SheetTitle>
               </SheetHeader>
-              <div className="grid gap-1 px-4 pb-10">
-                {MORE_NAV.map((item) => (
-                  <Link
-                    key={item.label + item.to}
-                    to={item.to}
-                    onClick={() => setMoreOpen(false)}
-                    className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-accent"
-                  >
-                    <item.icon className="h-4 w-4 text-primary" />
-                    {item.label}
-                  </Link>
+              <div className="grid gap-4 px-4 pb-10">
+                {MORE_SECTIONS.map((section) => (
+                  <div key={section.heading}>
+                    <p className="px-3 pb-1 text-xs font-medium text-muted-foreground">
+                      {section.heading}
+                    </p>
+                    <div className="grid gap-0.5">
+                      {section.items.map((item) => (
+                        <Link
+                          key={section.heading + item.to}
+                          to={item.to}
+                          onClick={() => setMoreOpen(false)}
+                          className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:bg-accent"
+                        >
+                          <item.icon className="h-4 w-4 text-primary" />
+                          {item.label}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
+
             </SheetContent>
           </Sheet>
         </div>
@@ -176,7 +218,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
           <BottomLink
             to="/appointments"
-            label="Visits"
+            label="Appointments"
             icon={CalendarDays}
             active={pathname.startsWith("/appointments")}
           />

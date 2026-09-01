@@ -31,6 +31,7 @@ import { Route as TimelineRouteImport } from './routes/timeline'
 import { Route as ToolsRouteImport } from './routes/tools'
 import { Route as AppointmentsAppointmentIdRouteImport } from './routes/appointments.$appointmentId'
 import { Route as ConditionsConditionIdRouteImport } from './routes/conditions.$conditionId'
+import { Route as TrendsKindRouteImport } from './routes/trends.$kind'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -143,6 +144,11 @@ const ConditionsConditionIdRoute = ConditionsConditionIdRouteImport.update({
   path: '/$conditionId',
   getParentRoute: () => ConditionsRoute,
 } as any)
+const TrendsKindRoute = TrendsKindRouteImport.update({
+  id: '/trends/$kind',
+  path: '/trends/$kind',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -167,6 +173,7 @@ export interface FileRoutesByFullPath {
   '/tools': typeof ToolsRoute
   '/appointments/$appointmentId': typeof AppointmentsAppointmentIdRoute
   '/conditions/$conditionId': typeof ConditionsConditionIdRoute
+  '/trends/$kind': typeof TrendsKindRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -191,6 +198,7 @@ export interface FileRoutesByTo {
   '/tools': typeof ToolsRoute
   '/appointments/$appointmentId': typeof AppointmentsAppointmentIdRoute
   '/conditions/$conditionId': typeof ConditionsConditionIdRoute
+  '/trends/$kind': typeof TrendsKindRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -216,6 +224,7 @@ export interface FileRoutesById {
   '/tools': typeof ToolsRoute
   '/appointments/$appointmentId': typeof AppointmentsAppointmentIdRoute
   '/conditions/$conditionId': typeof ConditionsConditionIdRoute
+  '/trends/$kind': typeof TrendsKindRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -242,6 +251,7 @@ export interface FileRouteTypes {
     | '/tools'
     | '/appointments/$appointmentId'
     | '/conditions/$conditionId'
+    | '/trends/$kind'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -266,6 +276,7 @@ export interface FileRouteTypes {
     | '/tools'
     | '/appointments/$appointmentId'
     | '/conditions/$conditionId'
+    | '/trends/$kind'
   id:
     | '__root__'
     | '/'
@@ -290,6 +301,7 @@ export interface FileRouteTypes {
     | '/tools'
     | '/appointments/$appointmentId'
     | '/conditions/$conditionId'
+    | '/trends/$kind'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -313,6 +325,7 @@ export interface RootRouteChildren {
   SymptomsRoute: typeof SymptomsRoute
   TimelineRoute: typeof TimelineRoute
   ToolsRoute: typeof ToolsRoute
+  TrendsKindRoute: typeof TrendsKindRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -471,6 +484,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConditionsConditionIdRouteImport
       parentRoute: typeof ConditionsRoute
     }
+    '/trends/$kind': {
+      id: '/trends/$kind'
+      path: '/trends/$kind'
+      fullPath: '/trends/$kind'
+      preLoaderRoute: typeof TrendsKindRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -519,6 +539,7 @@ const rootRouteChildren: RootRouteChildren = {
   SymptomsRoute: SymptomsRoute,
   TimelineRoute: TimelineRoute,
   ToolsRoute: ToolsRoute,
+  TrendsKindRoute: TrendsKindRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
