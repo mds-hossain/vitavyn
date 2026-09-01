@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { format, isSameDay } from "date-fns";
-import { Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { EmptyState, MetricTile, PageHeader, Panel } from "@/components/vitavyn/primitives";
+import { EditRecordDialog } from "@/components/vitavyn/EditRecordDialog";
 import { useVitavyn } from "@/lib/vitavyn/store";
+import type { Meal } from "@/lib/vitavyn/types";
 
 export const Route = createFileRoute("/nutrition")({
   head: () => ({
@@ -32,8 +34,9 @@ export const Route = createFileRoute("/nutrition")({
 });
 
 function NutritionPage() {
-  const { data, add, remove } = useVitavyn();
+  const { data, add, remove, updateItem } = useVitavyn();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Meal | null>(null);
   const [form, setForm] = useState({ name: "", mealType: "lunch", carbs: "", calories: "" });
 
   const today = new Date();
@@ -95,14 +98,51 @@ function NutritionPage() {
                       {meal.calories ? ` · ${meal.calories} kcal` : ""}
                     </p>
                   </div>
-                  <Button variant="ghost" size="icon" aria-label="Remove meal" onClick={() => remove("meals", meal.id)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex shrink-0">
+                    <Button variant="ghost" size="icon" aria-label="Edit meal" onClick={() => setEditing(meal)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" aria-label="Remove meal" onClick={() => remove("meals", meal.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </li>
               ))}
           </ul>
         )}
       </Panel>
+
+      <EditRecordDialog
+        title="Edit meal"
+        open={!!editing}
+        onOpenChange={(next) => (next ? null : setEditing(null))}
+        fields={[
+          { key: "name", label: "Meal", full: true },
+          { key: "mealType", label: "Type", type: "select", options: ["breakfast", "lunch", "dinner", "snack"] },
+          { key: "eatenAt", label: "When", type: "datetime-local" },
+          { key: "carbsGrams", label: "Carbs (g)", type: "number" },
+          { key: "calories", label: "Calories", type: "number" },
+        ]}
+        values={{
+          name: editing?.name ?? "",
+          mealType: editing?.mealType ?? "lunch",
+          eatenAt: editing ? format(new Date(editing.eatenAt), "yyyy-MM-dd'T'HH:mm") : "",
+          carbsGrams: editing?.carbsGrams != null ? String(editing.carbsGrams) : "",
+          calories: editing?.calories != null ? String(editing.calories) : "",
+        }}
+        onSave={(next) => {
+          if (!editing) return;
+          updateItem("meals", editing.id, {
+            name: next["name"] ?? editing.name,
+            mealType: (next["mealType"] ?? editing.mealType) as typeof editing.mealType,
+            eatenAt: next["eatenAt"] ? new Date(next["eatenAt"]).toISOString() : editing.eatenAt,
+            carbsGrams: next["carbsGrams"] ? Number(next["carbsGrams"]) : null,
+            calories: next["calories"] ? Number(next["calories"]) : null,
+          } as never);
+          setEditing(null);
+          toast.success("Meal updated");
+        }}
+      />
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>

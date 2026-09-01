@@ -14,7 +14,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { EmptyState, PageHeader, Panel, StatusPill } from "@/components/vitavyn/primitives";
+import { EditRecordDialog } from "@/components/vitavyn/EditRecordDialog";
 import { useVitavyn } from "@/lib/vitavyn/store";
+import type { Condition } from "@/lib/vitavyn/types";
 
 export const Route = createFileRoute("/conditions")({
   head: () => ({
@@ -33,8 +35,9 @@ export const Route = createFileRoute("/conditions")({
 });
 
 function ConditionsPage() {
-  const { data, add } = useVitavyn();
+  const { data, add, updateItem } = useVitavyn();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Condition | null>(null);
   const [name, setName] = useState("");
   const [metrics, setMetrics] = useState("");
 
@@ -117,15 +120,60 @@ function ConditionsPage() {
                   ))}
                 </ul>
               </div>
-              <Button asChild variant="ghost" className="mt-5 justify-start px-0">
-                <Link to="/conditions/$conditionId" params={{ conditionId: condition.id }}>
-                  View →
-                </Link>
-              </Button>
+              <div className="mt-5 flex items-center justify-between">
+                <Button asChild variant="ghost" className="justify-start px-0">
+                  <Link to="/conditions/$conditionId" params={{ conditionId: condition.id }}>
+                    View →
+                  </Link>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label={`Edit ${condition.name}`}
+                  onClick={() => setEditing(condition)}
+                >
+                  Edit
+                </Button>
+              </div>
             </Panel>
           ))}
         </div>
       )}
+
+      <EditRecordDialog
+        title="Edit condition"
+        open={!!editing}
+        onOpenChange={(next) => (next ? null : setEditing(null))}
+        fields={[
+          { key: "name", label: "Condition name", full: true },
+          { key: "status", label: "Status", type: "select", options: ["active", "monitoring", "resolved"] },
+          { key: "diagnosedOn", label: "Diagnosed on", type: "date" },
+          { key: "trackedMetrics", label: "Tracked metrics (comma separated)", full: true },
+          { key: "notes", label: "Notes", type: "textarea" },
+        ]}
+        values={{
+          name: editing?.name ?? "",
+          status: editing?.status ?? "active",
+          diagnosedOn: editing?.diagnosedOn ? editing.diagnosedOn.slice(0, 10) : "",
+          trackedMetrics: editing?.trackedMetrics.join(", ") ?? "",
+          notes: editing?.notes ?? "",
+        }}
+        onSave={(next) => {
+          if (!editing) return;
+          updateItem("conditions", editing.id, {
+            name: next["name"] ?? editing.name,
+            status: (next["status"] ?? editing.status) as typeof editing.status,
+            diagnosedOn: next["diagnosedOn"] || undefined,
+            trackedMetrics: (next["trackedMetrics"] ?? "")
+              .split(",")
+              .map((m) => m.trim())
+              .filter(Boolean),
+            notes: next["notes"] ?? "",
+          } as never);
+          setEditing(null);
+          toast.success("Condition updated");
+        }}
+      />
     </div>
   );
 }
