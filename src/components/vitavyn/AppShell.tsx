@@ -43,24 +43,56 @@ const PRIMARY_NAV: NavItem[] = [
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
-const MORE_NAV: NavItem[] = [
-  { to: "/conditions", label: "Conditions", icon: Activity },
-  { to: "/measurements", label: "Measurements", icon: ChartLine },
-  { to: "/symptoms", label: "Symptoms", icon: ClipboardList },
-  { to: "/timeline", label: "Timeline", icon: CalendarDays },
-  { to: "/medications", label: "Medications", icon: Pill },
-  { to: "/nutrition", label: "Nutrition", icon: UtensilsCrossed },
-  { to: "/doctors", label: "Doctors", icon: Stethoscope },
-  { to: "/records", label: "Records", icon: FileText },
-  { to: "/labs", label: "Lab results", icon: FlaskConical },
-  { to: "/insights", label: "Insights", icon: ChartLine },
-  { to: "/report", label: "Health report", icon: FileText },
-  { to: "/emergency", label: "Emergency card", icon: Siren },
-  { to: "/tools", label: "Tools", icon: Wrench },
-  { to: "/plans", label: "Plans & storage", icon: BadgeCheck },
-  { to: "/privacy", label: "Data & Privacy", icon: ShieldCheck },
-  { to: "/settings", label: "Settings", icon: Settings },
+const MORE_SECTIONS: { heading: string; items: NavItem[] }[] = [
+  {
+    heading: "Health",
+    items: [
+      { to: "/conditions", label: "Conditions", icon: Activity },
+      { to: "/measurements", label: "Measurements", icon: ChartLine },
+      { to: "/symptoms", label: "Symptoms", icon: ClipboardList },
+      { to: "/timeline", label: "Timeline", icon: CalendarDays },
+    ],
+  },
+  {
+    heading: "Care",
+    items: [
+      { to: "/medications", label: "Medications", icon: Pill },
+      { to: "/appointments", label: "Appointments", icon: CalendarDays },
+      { to: "/doctors", label: "Doctors", icon: Stethoscope },
+    ],
+  },
+  {
+    heading: "Records",
+    items: [
+      { to: "/records", label: "Medical records", icon: FileText },
+      { to: "/labs", label: "Lab results", icon: FlaskConical },
+    ],
+  },
+  {
+    heading: "Wellness",
+    items: [
+      { to: "/nutrition", label: "Nutrition", icon: UtensilsCrossed },
+      { to: "/insights", label: "Insights", icon: ChartLine },
+    ],
+  },
+  {
+    heading: "Tools",
+    items: [
+      { to: "/report", label: "Health report", icon: FileText },
+      { to: "/emergency", label: "Emergency card", icon: Siren },
+      { to: "/tools", label: "Unit converters", icon: Wrench },
+    ],
+  },
+  {
+    heading: "Account",
+    items: [
+      { to: "/plans", label: "Plans & storage", icon: BadgeCheck },
+      { to: "/privacy", label: "Data & Privacy", icon: ShieldCheck },
+      { to: "/settings", label: "Settings", icon: Settings },
+    ],
+  },
 ];
+
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [addOpen, setAddOpen] = useState(false);
