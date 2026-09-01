@@ -101,6 +101,15 @@ export function VitavynProvider({ children }: { children: ReactNode }) {
           });
           return draft;
         }),
+      updateItem: (key, id, patch) =>
+        update((draft) => {
+          draft[key] = (draft[key] as Record<string, unknown>[]).map((row) =>
+            (row as { id: string }).id === id
+              ? { ...row, ...(patch as Record<string, unknown>), updatedAt: new Date().toISOString() }
+              : row,
+          ) as never;
+          return draft;
+        }),
       remove: (key, id) =>
         update((draft) => {
           draft[key] = (draft[key] as { id: string }[]).filter((row) => row.id !== id) as never;
