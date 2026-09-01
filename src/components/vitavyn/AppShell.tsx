@@ -166,19 +166,29 @@ export function AppShell({ children }: { children: ReactNode }) {
               <SheetHeader className="text-left">
                 <SheetTitle>Hello, {firstName}</SheetTitle>
               </SheetHeader>
-              <div className="grid gap-1 px-4 pb-10">
-                {MORE_NAV.map((item) => (
-                  <Link
-                    key={item.label + item.to}
-                    to={item.to}
-                    onClick={() => setMoreOpen(false)}
-                    className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium hover:bg-accent"
-                  >
-                    <item.icon className="h-4 w-4 text-primary" />
-                    {item.label}
-                  </Link>
+              <div className="grid gap-4 px-4 pb-10">
+                {MORE_SECTIONS.map((section) => (
+                  <div key={section.heading}>
+                    <p className="px-3 pb-1 text-xs font-medium text-muted-foreground">
+                      {section.heading}
+                    </p>
+                    <div className="grid gap-0.5">
+                      {section.items.map((item) => (
+                        <Link
+                          key={section.heading + item.to}
+                          to={item.to}
+                          onClick={() => setMoreOpen(false)}
+                          className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:bg-accent"
+                        >
+                          <item.icon className="h-4 w-4 text-primary" />
+                          {item.label}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
+
             </SheetContent>
           </Sheet>
         </div>
