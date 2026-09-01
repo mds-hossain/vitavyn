@@ -3,15 +3,9 @@ import { useState } from "react";
 import { PageHeader, Panel, SafetyNote } from "@/components/vitavyn/primitives";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  a1cToAverageGlucose,
-  glucoseToMgdl,
-  glucoseToMmol,
-  kgToLb,
-  lbToKg,
-  cToF,
-  fToC,
-} from "@/lib/vitavyn/units";
+import { glucoseToMgdl, glucoseToMmol, kgToLb, lbToKg, cToF, fToC, round } from "@/lib/vitavyn/units";
+
+const a1cToAverageGlucose = (percent: number) => round(28.7 * percent - 46.7, 0);
 
 export const Route = createFileRoute("/tools")({
   head: () => ({
@@ -50,10 +44,10 @@ function ToolsPage() {
             <Input inputMode="decimal" value={glucose} onChange={(e) => setGlucose(e.target.value)} />
           </div>
           <p className="mt-4 text-sm text-muted-foreground">
-            = <span className="metric-value text-base text-foreground">{glucoseToMmol(Number(glucose) || 0)}</span> mmol/L
+            = <span className="metric-value text-base text-foreground">{round(glucoseToMmol(Number(glucose) || 0))}</span> mmol/L
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Reverse: 7.0 mmol/L = {glucoseToMgdl(7)} mg/dL
+            Reverse: 7.0 mmol/L = {round(glucoseToMgdl(7),0)} mg/dL
           </p>
         </Panel>
 
@@ -73,9 +67,9 @@ function ToolsPage() {
             <Input inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} />
           </div>
           <p className="mt-4 text-sm text-muted-foreground">
-            = <span className="metric-value text-base text-foreground">{kgToLb(Number(weight) || 0)}</span> lb
+            = <span className="metric-value text-base text-foreground">{round(kgToLb(Number(weight) || 0))}</span> lb
           </p>
-          <p className="mt-1 text-sm text-muted-foreground">Reverse: 160 lb = {lbToKg(160)} kg</p>
+          <p className="mt-1 text-sm text-muted-foreground">Reverse: 160 lb = {round(lbToKg(160))} kg</p>
         </Panel>
 
         <Panel title="Temperature converter">
@@ -84,9 +78,9 @@ function ToolsPage() {
             <Input inputMode="decimal" value={temp} onChange={(e) => setTemp(e.target.value)} />
           </div>
           <p className="mt-4 text-sm text-muted-foreground">
-            = <span className="metric-value text-base text-foreground">{cToF(Number(temp) || 0)}</span> °F
+            = <span className="metric-value text-base text-foreground">{round(cToF(Number(temp) || 0))}</span> °F
           </p>
-          <p className="mt-1 text-sm text-muted-foreground">Reverse: 100 °F = {fToC(100)} °C</p>
+          <p className="mt-1 text-sm text-muted-foreground">Reverse: 100 °F = {round(fToC(100))} °C</p>
         </Panel>
 
         <Panel title="BMI">

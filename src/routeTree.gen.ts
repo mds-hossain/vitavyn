@@ -14,11 +14,16 @@ import { Route as AppointmentsRouteImport } from './routes/appointments'
 import { Route as ConditionsRouteImport } from './routes/conditions'
 import { Route as DoctorsRouteImport } from './routes/doctors'
 import { Route as HealthRouteImport } from './routes/health'
+import { Route as InsightsRouteImport } from './routes/insights'
+import { Route as LabsRouteImport } from './routes/labs'
 import { Route as MeasurementsRouteImport } from './routes/measurements'
 import { Route as MedicationsRouteImport } from './routes/medications'
 import { Route as NutritionRouteImport } from './routes/nutrition'
+import { Route as RecordsRouteImport } from './routes/records'
+import { Route as ReportRouteImport } from './routes/report'
 import { Route as SymptomsRouteImport } from './routes/symptoms'
 import { Route as TimelineRouteImport } from './routes/timeline'
+import { Route as ToolsRouteImport } from './routes/tools'
 import { Route as AppointmentsAppointmentIdRouteImport } from './routes/appointments.$appointmentId'
 import { Route as ConditionsConditionIdRouteImport } from './routes/conditions.$conditionId'
 
@@ -47,6 +52,16 @@ const HealthRoute = HealthRouteImport.update({
   path: '/health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InsightsRoute = InsightsRouteImport.update({
+  id: '/insights',
+  path: '/insights',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LabsRoute = LabsRouteImport.update({
+  id: '/labs',
+  path: '/labs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MeasurementsRoute = MeasurementsRouteImport.update({
   id: '/measurements',
   path: '/measurements',
@@ -62,6 +77,16 @@ const NutritionRoute = NutritionRouteImport.update({
   path: '/nutrition',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RecordsRoute = RecordsRouteImport.update({
+  id: '/records',
+  path: '/records',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportRoute = ReportRouteImport.update({
+  id: '/report',
+  path: '/report',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SymptomsRoute = SymptomsRouteImport.update({
   id: '/symptoms',
   path: '/symptoms',
@@ -70,6 +95,11 @@ const SymptomsRoute = SymptomsRouteImport.update({
 const TimelineRoute = TimelineRouteImport.update({
   id: '/timeline',
   path: '/timeline',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsRoute = ToolsRouteImport.update({
+  id: '/tools',
+  path: '/tools',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppointmentsAppointmentIdRoute =
@@ -90,11 +120,16 @@ export interface FileRoutesByFullPath {
   '/conditions': typeof ConditionsRouteWithChildren
   '/doctors': typeof DoctorsRoute
   '/health': typeof HealthRoute
+  '/insights': typeof InsightsRoute
+  '/labs': typeof LabsRoute
   '/measurements': typeof MeasurementsRoute
   '/medications': typeof MedicationsRoute
   '/nutrition': typeof NutritionRoute
+  '/records': typeof RecordsRoute
+  '/report': typeof ReportRoute
   '/symptoms': typeof SymptomsRoute
   '/timeline': typeof TimelineRoute
+  '/tools': typeof ToolsRoute
   '/appointments/$appointmentId': typeof AppointmentsAppointmentIdRoute
   '/conditions/$conditionId': typeof ConditionsConditionIdRoute
 }
@@ -104,11 +139,16 @@ export interface FileRoutesByTo {
   '/conditions': typeof ConditionsRouteWithChildren
   '/doctors': typeof DoctorsRoute
   '/health': typeof HealthRoute
+  '/insights': typeof InsightsRoute
+  '/labs': typeof LabsRoute
   '/measurements': typeof MeasurementsRoute
   '/medications': typeof MedicationsRoute
   '/nutrition': typeof NutritionRoute
+  '/records': typeof RecordsRoute
+  '/report': typeof ReportRoute
   '/symptoms': typeof SymptomsRoute
   '/timeline': typeof TimelineRoute
+  '/tools': typeof ToolsRoute
   '/appointments/$appointmentId': typeof AppointmentsAppointmentIdRoute
   '/conditions/$conditionId': typeof ConditionsConditionIdRoute
 }
@@ -119,11 +159,16 @@ export interface FileRoutesById {
   '/conditions': typeof ConditionsRouteWithChildren
   '/doctors': typeof DoctorsRoute
   '/health': typeof HealthRoute
+  '/insights': typeof InsightsRoute
+  '/labs': typeof LabsRoute
   '/measurements': typeof MeasurementsRoute
   '/medications': typeof MedicationsRoute
   '/nutrition': typeof NutritionRoute
+  '/records': typeof RecordsRoute
+  '/report': typeof ReportRoute
   '/symptoms': typeof SymptomsRoute
   '/timeline': typeof TimelineRoute
+  '/tools': typeof ToolsRoute
   '/appointments/$appointmentId': typeof AppointmentsAppointmentIdRoute
   '/conditions/$conditionId': typeof ConditionsConditionIdRoute
 }
@@ -135,11 +180,16 @@ export interface FileRouteTypes {
     | '/conditions'
     | '/doctors'
     | '/health'
+    | '/insights'
+    | '/labs'
     | '/measurements'
     | '/medications'
     | '/nutrition'
+    | '/records'
+    | '/report'
     | '/symptoms'
     | '/timeline'
+    | '/tools'
     | '/appointments/$appointmentId'
     | '/conditions/$conditionId'
   fileRoutesByTo: FileRoutesByTo
@@ -149,11 +199,16 @@ export interface FileRouteTypes {
     | '/conditions'
     | '/doctors'
     | '/health'
+    | '/insights'
+    | '/labs'
     | '/measurements'
     | '/medications'
     | '/nutrition'
+    | '/records'
+    | '/report'
     | '/symptoms'
     | '/timeline'
+    | '/tools'
     | '/appointments/$appointmentId'
     | '/conditions/$conditionId'
   id:
@@ -163,11 +218,16 @@ export interface FileRouteTypes {
     | '/conditions'
     | '/doctors'
     | '/health'
+    | '/insights'
+    | '/labs'
     | '/measurements'
     | '/medications'
     | '/nutrition'
+    | '/records'
+    | '/report'
     | '/symptoms'
     | '/timeline'
+    | '/tools'
     | '/appointments/$appointmentId'
     | '/conditions/$conditionId'
   fileRoutesById: FileRoutesById
@@ -178,11 +238,16 @@ export interface RootRouteChildren {
   ConditionsRoute: typeof ConditionsRouteWithChildren
   DoctorsRoute: typeof DoctorsRoute
   HealthRoute: typeof HealthRoute
+  InsightsRoute: typeof InsightsRoute
+  LabsRoute: typeof LabsRoute
   MeasurementsRoute: typeof MeasurementsRoute
   MedicationsRoute: typeof MedicationsRoute
   NutritionRoute: typeof NutritionRoute
+  RecordsRoute: typeof RecordsRoute
+  ReportRoute: typeof ReportRoute
   SymptomsRoute: typeof SymptomsRoute
   TimelineRoute: typeof TimelineRoute
+  ToolsRoute: typeof ToolsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -222,6 +287,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/insights': {
+      id: '/insights'
+      path: '/insights'
+      fullPath: '/insights'
+      preLoaderRoute: typeof InsightsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/labs': {
+      id: '/labs'
+      path: '/labs'
+      fullPath: '/labs'
+      preLoaderRoute: typeof LabsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/measurements': {
       id: '/measurements'
       path: '/measurements'
@@ -243,6 +322,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NutritionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/records': {
+      id: '/records'
+      path: '/records'
+      fullPath: '/records'
+      preLoaderRoute: typeof RecordsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/report': {
+      id: '/report'
+      path: '/report'
+      fullPath: '/report'
+      preLoaderRoute: typeof ReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/symptoms': {
       id: '/symptoms'
       path: '/symptoms'
@@ -255,6 +348,13 @@ declare module '@tanstack/react-router' {
       path: '/timeline'
       fullPath: '/timeline'
       preLoaderRoute: typeof TimelineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools': {
+      id: '/tools'
+      path: '/tools'
+      fullPath: '/tools'
+      preLoaderRoute: typeof ToolsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/appointments/$appointmentId': {
@@ -304,11 +404,16 @@ const rootRouteChildren: RootRouteChildren = {
   ConditionsRoute: ConditionsRouteWithChildren,
   DoctorsRoute: DoctorsRoute,
   HealthRoute: HealthRoute,
+  InsightsRoute: InsightsRoute,
+  LabsRoute: LabsRoute,
   MeasurementsRoute: MeasurementsRoute,
   MedicationsRoute: MedicationsRoute,
   NutritionRoute: NutritionRoute,
+  RecordsRoute: RecordsRoute,
+  ReportRoute: ReportRoute,
   SymptomsRoute: SymptomsRoute,
   TimelineRoute: TimelineRoute,
+  ToolsRoute: ToolsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
