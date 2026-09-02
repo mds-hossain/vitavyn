@@ -57,11 +57,11 @@ import {
   WEEKDAYS,
   clampToSlot,
   findMedForm,
+  formatTimeOfDay,
   frequencyLabel,
   genericFor,
   isPastMedication,
   medFormIcon,
-  medFormLabel,
   mealContextLabel,
   normalizeForm,
   slotForTime,
@@ -312,6 +312,7 @@ function MedicationsPage() {
     toast.success("Medication deleted");
   };
 
+  const twelveHour = data.preferences.timeFormat === "12h";
   const takenCount = todaysLogs.filter((l) => l.status === "recorded").length;
   const generic = genericFor(form.name);
   const unitOptions = unitsForForm(form.form);
@@ -355,7 +356,7 @@ function MedicationsPage() {
                       className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
                     >
                       <SlotIcon className="h-3.5 w-3.5" strokeWidth={1.75} />
-                      <span className="font-medium text-foreground">{dose.time}</span>
+                      <span className="font-medium text-foreground">{formatTimeOfDay(dose.time, twelveHour)}</span>
                       {mealContextLabel(dose.mealContext)}
                     </span>
                   );
@@ -434,7 +435,7 @@ function MedicationsPage() {
                 >
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="w-16 shrink-0">
-                      <p className="metric-value text-sm">{dose.time}</p>
+                      <p className="metric-value text-sm">{formatTimeOfDay(dose.time, twelveHour)}</p>
                       <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                         <SlotIcon className="h-3 w-3" strokeWidth={1.75} />
                         {slotLabel(dose.slot)}
@@ -442,8 +443,7 @@ function MedicationsPage() {
                     </div>
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">
-                        {med.name} {med.dose}
-                        {med.unit}
+                        {med.name} {med.dose} {med.unit}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {mealContextLabel(dose.mealContext)}
