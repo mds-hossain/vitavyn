@@ -44,6 +44,7 @@ import {
   SafetyNote,
   StatusPill,
 } from "@/components/vitavyn/primitives";
+import { DatePicker } from "@/components/vitavyn/DatePicker";
 import {
   DoseScheduleField,
   slotIcon,
