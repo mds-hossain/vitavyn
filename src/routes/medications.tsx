@@ -314,17 +314,18 @@ function MedicationsPage() {
         <div className="flex items-start gap-3">
           <Icon className="mt-0.5 h-5 w-5 shrink-0 text-primary" strokeWidth={1.75} />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-base font-semibold leading-tight">{med.name}</p>
+            <p className="truncate text-base font-semibold leading-tight">
+              {med.name}
+              {med.dose ? ` ${med.dose} ${med.unit}` : ""}
+            </p>
 
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {med.dose ? (
-                <Chip>
-                  {med.dose} {med.unit}
-                </Chip>
-              ) : null}
-              <Chip>{medFormLabel(med.form)}</Chip>
-              {condition ? <Chip>{condition}</Chip> : null}
-              <Chip>{frequencyLabel(med.frequency)}</Chip>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {condition ? <Chip tone="accent">{condition}</Chip> : null}
+              <Chip>
+                {med.frequency === "specific_days"
+                  ? daysLabel(med.daysOfWeek ?? [])
+                  : frequencyLabel(med.frequency)}
+              </Chip>
             </div>
 
             {med.frequency === "as_needed" ? (
