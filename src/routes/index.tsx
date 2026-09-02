@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { format, formatDistanceToNowStrict, isSameDay, isTomorrow } from "date-fns";
 import {
-  AlertCircle,
+  Ban,
   CalendarDays,
   CheckCircle2,
   ChevronRight,
@@ -15,7 +15,7 @@ import { Panel, SafetyNote, StatusPill } from "@/components/vitavyn/primitives";
 import { MeasurementCard } from "@/components/vitavyn/MeasurementCard";
 import { QuickAdd } from "@/components/vitavyn/QuickAdd";
 import { buildTimeline, useVitavyn } from "@/lib/vitavyn/store";
-import { medFormIcon } from "@/lib/vitavyn/medication";
+import { formatTimeOfDay, mealContextLabel, medFormIcon } from "@/lib/vitavyn/medication";
 import {
   KIND_LABELS,
   doseState,
@@ -50,7 +50,7 @@ function greeting(hour: number) {
 }
 
 function TodayPage() {
-  const { data, update } = useVitavyn();
+  const { data, update, remove } = useVitavyn();
   const [addOpen, setAddOpen] = useState(false);
   const [now, setNow] = useState<Date | null>(null);
 
@@ -100,19 +100,26 @@ function TodayPage() {
 
   const recentEvents = buildTimeline(data).slice(0, 5);
 
-  const recordDose = (medicationId: string, scheduled: Date) => {
+  const twelveHour = data.preferences.timeFormat === "12h";
+
+  const markDose = (dose: (typeof doses)[number], status: "recorded" | "skipped") => {
     update((draft) => {
       draft.medicationLogs.unshift({
         id: `log-${Date.now()}`,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        medicationId,
-        scheduledFor: scheduled.toISOString(),
+        medicationId: dose.medicationId,
+        scheduledFor: dose.scheduled.toISOString(),
         recordedAt: new Date().toISOString(),
-        status: "recorded",
+        status,
       });
       return draft;
     });
+  };
+
+  /** Undo a "not taken" mark without losing the card. */
+  const undoDose = (logId?: string) => {
+    if (logId) remove("medicationLogs", logId);
   };
 
   return (
