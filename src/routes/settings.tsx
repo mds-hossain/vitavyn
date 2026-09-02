@@ -135,6 +135,24 @@ function SettingsPage() {
             <Label>Temperature</Label>
             {toggleUnit("tempUnit", ["°C", "°F"])}
           </div>
+          <div className="space-y-2">
+            <Label>Time format</Label>
+            <div className="flex gap-2">
+              {(["24h", "12h"] as const).map((option) => (
+                <button
+                  key={option}
+                  onClick={() => setPreferences({ timeFormat: option })}
+                  className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                    (preferences.timeFormat ?? "24h") === option
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {option === "24h" ? "24-hour" : "12-hour"}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </Panel>
 
