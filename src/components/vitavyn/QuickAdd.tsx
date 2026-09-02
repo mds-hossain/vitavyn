@@ -176,7 +176,7 @@ export function QuickAdd({
             dose: form.dose ?? "",
             unit: form.doseUnit ?? "mg",
             form: form.form ?? "tablet",
-            frequency: sorted.length === 1 ? "Once daily" : `${sorted.length} times daily`,
+            frequency: "every_day",
             schedule: sorted,
             times: sorted.map((s) => s.time),
             conditionIds: [],
