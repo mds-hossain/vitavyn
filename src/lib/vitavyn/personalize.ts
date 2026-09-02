@@ -1,5 +1,5 @@
-import { isPastMedication } from "./medication";
-import type { MeasurementKind, VitavynData } from "./types";
+import { isPastMedication, slotForTime } from "./medication";
+import type { MeasurementKind, SlotId, VitavynData } from "./types";
 
 export const KIND_LABELS: Record<string, string> = {
   glucose: "Blood glucose",
