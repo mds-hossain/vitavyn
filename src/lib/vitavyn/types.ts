@@ -15,6 +15,7 @@ export type Preferences = {
   glucoseUnit: GlucoseUnit;
   weightUnit: WeightUnit;
   tempUnit: TempUnit;
+  timeFormat?: "12h" | "24h";
   theme: "light" | "dark";
   storageTier: "local" | "sync" | "vault";
 };
