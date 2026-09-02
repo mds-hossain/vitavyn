@@ -81,6 +81,10 @@ export type Medication = Stamped & {
   prescriber?: string;
   notes?: string;
   refillReminder?: boolean;
+  /** 0=Sunday … 6=Saturday. Only meaningful when frequency is "specific_days". */
+  daysOfWeek?: number[];
+  /** Only meaningful when frequency is "as_needed". */
+  maxDosesPerDay?: number | null;
 };
 
 export type MedicationLog = Stamped & {

@@ -2,14 +2,13 @@ import {
   Bandage,
   Droplet,
   Droplets,
-  Eye,
   Pill,
+  Pipette,
   Syringe,
-  PillBottle,
   Wind,
   type LucideIcon,
 } from "lucide-react";
-import type { Medication } from "./types";
+import type { Medication, SlotId } from "./types";
 
 export type MedFormDef = {
   value: string;
@@ -20,26 +19,84 @@ export type MedFormDef = {
 
 /** Medication forms with their allowed measurement units. */
 export const MED_FORMS: MedFormDef[] = [
-  { value: "tablet", label: "Pill / Tablet / Capsule", icon: Pill, units: ["mg", "mcg", "g"] },
-  { value: "insulin_pen", label: "Insulin Pen", icon: Syringe, units: ["IU"] },
-  { value: "insulin_vial", label: "Insulin Vial & Syringe", icon: Syringe, units: ["IU"] },
+  { value: "tablet", label: "Tablet", icon: Pill, units: ["mg", "mcg", "g"] },
+  { value: "capsule", label: "Capsule", icon: Pill, units: ["mg", "mcg", "g"] },
   { value: "liquid", label: "Liquid / Syrup", icon: Droplet, units: ["mL"] },
+  { value: "insulin", label: "Insulin", icon: Syringe, units: ["IU"] },
+  { value: "injection", label: "Injection / Pen", icon: Syringe, units: ["mg", "mcg", "mL", "IU"] },
   { value: "inhaler", label: "Inhaler / Puff", icon: Wind, units: ["Puffs"] },
-  { value: "cream", label: "Cream / Ointment", icon: PillBottle, units: ["mg", "g"] },
-  { value: "drops", label: "Drops (Eye / Ear)", icon: Eye, units: ["Drops"] },
+  { value: "cream", label: "Cream", icon: Pipette, units: ["mg", "g"] },
+  { value: "ointment", label: "Ointment", icon: Pipette, units: ["mg", "g"] },
+  { value: "drops", label: "Drops (Eye / Ear)", icon: Droplet, units: ["Drops"] },
   { value: "patch", label: "Patch", icon: Bandage, units: ["mcg", "mg"] },
 ];
 
+/** Legacy stored form values from earlier versions of the app. */
+const FORM_ALIASES: Record<string, string> = {
+  insulin_pen: "insulin",
+  insulin_vial: "insulin",
+  pill: "tablet",
+  Tablet: "tablet",
+};
+
+export const normalizeForm = (value: string) =>
+  MED_FORMS.some((f) => f.value === value) ? value : (FORM_ALIASES[value] ?? "tablet");
+
 export const findMedForm = (value: string) =>
-  MED_FORMS.find((f) => f.value === value) ?? MED_FORMS[0]!;
+  MED_FORMS.find((f) => f.value === normalizeForm(value)) ?? MED_FORMS[0]!;
+
+/** Clinical windows each time-of-day block is clamped to. */
+export const SLOT_WINDOWS: Record<
+  Exclude<SlotId, "custom">,
+  { label: string; min: string; max: string; defaultTime: string; wraps?: boolean }
+> = {
+  morning: { label: "Morning", min: "06:00", max: "11:59", defaultTime: "08:00" },
+  noon: { label: "Noon", min: "12:00", max: "16:59", defaultTime: "13:00" },
+  evening: { label: "Evening", min: "17:00", max: "20:59", defaultTime: "18:00" },
+  night: { label: "Night", min: "21:00", max: "05:59", defaultTime: "22:00", wraps: true },
+};
+
+const toMinutes = (t: string) => {
+  const [h, m] = t.split(":");
+  return Number(h ?? 0) * 60 + Number(m ?? 0);
+};
+
+/** Keep a chosen time inside its slot's clinical window (night wraps past midnight). */
+export function clampToSlot(slot: SlotId, time: string): string {
+  const win = SLOT_WINDOWS[slot as Exclude<SlotId, "custom">];
+  if (!win) return time;
+  const v = toMinutes(time);
+  const min = toMinutes(win.min);
+  const max = toMinutes(win.max);
+  if (win.wraps) return v >= min || v <= max ? time : win.defaultTime;
+  if (v < min) return win.min;
+  if (v > max) return win.max;
+  return time;
+}
+
+export function slotForTime(time: string): SlotId {
+  const v = toMinutes(time);
+  if (v >= 360 && v < 720) return "morning";
+  if (v >= 720 && v < 1020) return "noon";
+  if (v >= 1020 && v < 1260) return "evening";
+  return "night";
+}
+
+export const WEEKDAYS = [
+  { value: 1, short: "M", label: "Monday" },
+  { value: 2, short: "T", label: "Tuesday" },
+  { value: 3, short: "W", label: "Wednesday" },
+  { value: 4, short: "T", label: "Thursday" },
+  { value: 5, short: "F", label: "Friday" },
+  { value: 6, short: "S", label: "Saturday" },
+  { value: 0, short: "S", label: "Sunday" },
+];
 
 export const unitsForForm = (value: string) => findMedForm(value).units;
 
-export const medFormLabel = (value: string) =>
-  MED_FORMS.find((f) => f.value === value)?.label ?? value;
+export const medFormLabel = (value: string) => findMedForm(value).label;
 
-export const medFormIcon = (value: string): LucideIcon =>
-  MED_FORMS.find((f) => f.value === value)?.icon ?? Droplets;
+export const medFormIcon = (value: string): LucideIcon => findMedForm(value).icon ?? Droplets;
 
 export const FREQUENCIES = [
   { value: "every_day", label: "Every day" },

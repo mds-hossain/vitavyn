@@ -1,4 +1,4 @@
-import { Plus, X } from "lucide-react";
+import { Moon, Sun, Sunrise, Sunset, X, type LucideIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -8,26 +8,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MEAL_CONTEXTS } from "@/lib/vitavyn/medication";
+import { MEAL_CONTEXTS, SLOT_WINDOWS, clampToSlot } from "@/lib/vitavyn/medication";
 import type { DoseSlot, MealContext, SlotId } from "@/lib/vitavyn/types";
 
-export const SLOTS: { id: SlotId; label: string; defaultTime: string }[] = [
-  { id: "morning", label: "Morning", defaultTime: "08:00" },
-  { id: "noon", label: "Noon", defaultTime: "13:00" },
-  { id: "evening", label: "Evening", defaultTime: "18:00" },
-  { id: "night", label: "Night", defaultTime: "22:00" },
+export const SLOTS: { id: SlotId; label: string; defaultTime: string; icon: LucideIcon }[] = [
+  { id: "morning", label: "Morning", defaultTime: SLOT_WINDOWS.morning.defaultTime, icon: Sunrise },
+  { id: "noon", label: "Noon", defaultTime: SLOT_WINDOWS.noon.defaultTime, icon: Sun },
+  { id: "evening", label: "Evening", defaultTime: SLOT_WINDOWS.evening.defaultTime, icon: Sunset },
+  { id: "night", label: "Night", defaultTime: SLOT_WINDOWS.night.defaultTime, icon: Moon },
 ];
 
-export const slotLabel = (id: SlotId) =>
-  SLOTS.find((s) => s.id === id)?.label ?? (id === "custom" ? "Custom" : id);
+export const slotLabel = (id: SlotId) => SLOTS.find((s) => s.id === id)?.label ?? "Dose";
+
+export const slotIcon = (id: SlotId): LucideIcon =>
+  SLOTS.find((s) => s.id === id)?.icon ?? Sun;
 
 export function sortSchedule(schedule: DoseSlot[]): DoseSlot[] {
-  return [...schedule].sort((a, b) => a.time.localeCompare(b.time));
+  const order: SlotId[] = ["morning", "noon", "evening", "night", "custom"];
+  return [...schedule].sort(
+    (a, b) => order.indexOf(a.slot) - order.indexOf(b.slot) || a.time.localeCompare(b.time),
+  );
 }
 
 /**
- * Inline dose schedule: four time-of-day blocks that expand in place, plus
- * custom dose times for more complex regimens.
+ * Bounded clinical schedule: four time-of-day blocks that expand inline, each
+ * with a time picker clamped to its clinical window and a meal-context select.
  */
 export function DoseScheduleField({
   schedule,
@@ -36,103 +41,97 @@ export function DoseScheduleField({
   schedule: DoseSlot[];
   onChange: (next: DoseSlot[]) => void;
 }) {
-  const update = (index: number, patch: Partial<DoseSlot>) =>
-    onChange(schedule.map((s, i) => (i === index ? { ...s, ...patch } : s)));
+  const bySlot = (slot: SlotId) => schedule.find((s) => s.slot === slot);
 
-  const removeAt = (index: number) => onChange(schedule.filter((_, i) => i !== index));
+  const update = (slot: SlotId, patch: Partial<DoseSlot>) =>
+    onChange(schedule.map((s) => (s.slot === slot ? { ...s, ...patch } : s)));
+
+  const removeSlot = (slot: SlotId) => onChange(schedule.filter((s) => s.slot !== slot));
 
   const toggleSlot = (slot: SlotId, defaultTime: string) => {
-    const index = schedule.findIndex((s) => s.slot === slot);
-    if (index >= 0) removeAt(index);
+    if (bySlot(slot)) removeSlot(slot);
     else onChange(sortSchedule([...schedule, { slot, time: defaultTime, mealContext: "anytime" }]));
   };
 
-  const addCustom = () =>
-    onChange(sortSchedule([...schedule, { slot: "custom", time: "12:00", mealContext: "anytime" }]));
-
-  const rows = schedule
-    .map((dose, index) => ({ dose, index }))
-    .sort((a, b) => a.dose.time.localeCompare(b.dose.time));
-
   return (
     <div className="space-y-3">
-      <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-        When do you take it?
-      </Label>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div>
+        <Label className="text-sm font-medium">When do you take it?</Label>
+        <p className="text-xs text-muted-foreground">
+          Tap a block to set its exact time and meal context.
+        </p>
+      </div>
+
+      <div className="space-y-2">
         {SLOTS.map((slot) => {
-          const picked = schedule.find((s) => s.slot === slot.id);
+          const picked = bySlot(slot.id);
+          const win = SLOT_WINDOWS[slot.id as Exclude<SlotId, "custom">]!;
+          const Icon = slot.icon;
           return (
-            <button
+            <div
               key={slot.id}
-              type="button"
-              aria-pressed={!!picked}
-              onClick={() => toggleSlot(slot.id, slot.defaultTime)}
-              className={`rounded-xl border px-3 py-3 text-center text-sm font-medium transition-colors ${
-                picked
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border text-muted-foreground hover:border-primary"
+              className={`overflow-hidden rounded-xl border transition-colors ${
+                picked ? "border-primary/60 bg-primary/5" : "border-border"
               }`}
             >
-              {slot.label}
-            </button>
+              <button
+                type="button"
+                aria-pressed={!!picked}
+                onClick={() => toggleSlot(slot.id, slot.defaultTime)}
+                className="flex w-full items-center gap-3 px-3 py-3 text-left"
+              >
+                <Icon
+                  className={`h-4 w-4 shrink-0 ${picked ? "text-primary" : "text-muted-foreground"}`}
+                  strokeWidth={1.75}
+                />
+                <span className={`text-sm font-medium ${picked ? "text-primary" : ""}`}>
+                  {slot.label}
+                </span>
+                <span className="ml-auto text-xs text-muted-foreground">
+                  {picked ? picked.time : `${win.min}–${win.max}`}
+                </span>
+              </button>
+
+              {picked ? (
+                <div className="grid gap-2 border-t border-border/60 px-3 py-3 sm:grid-cols-[1fr_1fr_auto]">
+                  <Input
+                    type="time"
+                    value={picked.time}
+                    min={win.wraps ? undefined : win.min}
+                    max={win.wraps ? undefined : win.max}
+                    aria-label={`${slot.label} time`}
+                    onChange={(e) => update(slot.id, { time: e.target.value })}
+                    onBlur={(e) => update(slot.id, { time: clampToSlot(slot.id, e.target.value) })}
+                  />
+                  <Select
+                    value={picked.mealContext ?? "anytime"}
+                    onValueChange={(v) => update(slot.id, { mealContext: v as MealContext })}
+                  >
+                    <SelectTrigger aria-label={`${slot.label} meal context`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MEAL_CONTEXTS.map((m) => (
+                        <SelectItem key={m.value} value={m.value}>
+                          {m.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${slot.label.toLowerCase()} dose`}
+                    onClick={() => removeSlot(slot.id)}
+                    className="inline-flex h-9 w-9 items-center justify-center justify-self-end rounded-md text-muted-foreground transition-colors hover:text-destructive"
+                  >
+                    <X className="h-4 w-4" strokeWidth={1.75} />
+                  </button>
+                </div>
+              ) : null}
+            </div>
           );
         })}
       </div>
-
-      {rows.length > 0 ? (
-        <div className="space-y-2">
-          {rows.map(({ dose, index }) => (
-            <div
-              key={`${dose.slot}-${index}`}
-              className="rounded-xl border border-border bg-muted/30 p-3"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-medium text-muted-foreground">{slotLabel(dose.slot)}</p>
-                <button
-                  type="button"
-                  aria-label={`Remove ${slotLabel(dose.slot).toLowerCase()} dose`}
-                  onClick={() => removeAt(index)}
-                  className="rounded-md p-1 text-muted-foreground transition-colors hover:text-destructive"
-                >
-                  <X className="h-4 w-4" strokeWidth={1.75} />
-                </button>
-              </div>
-              <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                <Input
-                  type="time"
-                  value={dose.time}
-                  aria-label={`${slotLabel(dose.slot)} time`}
-                  onChange={(e) => update(index, { time: e.target.value })}
-                />
-                <Select
-                  value={dose.mealContext ?? "anytime"}
-                  onValueChange={(v) => update(index, { mealContext: v as MealContext })}
-                >
-                  <SelectTrigger aria-label={`${slotLabel(dose.slot)} meal context`}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MEAL_CONTEXTS.map((m) => (
-                      <SelectItem key={m.value} value={m.value}>
-                        {m.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : null}
-
-      <button
-        type="button"
-        onClick={addCustom}
-        className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-      >
-        <Plus className="h-4 w-4" strokeWidth={1.75} /> Add custom dose time
-      </button>
     </div>
   );
 }
