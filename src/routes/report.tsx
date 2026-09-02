@@ -1,3 +1,4 @@
+import { frequencyLabel } from "@/lib/vitavyn/medication";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { format, subDays } from "date-fns";
@@ -85,7 +86,7 @@ function ReportPage() {
           {data.medications.map((m) => (
             <li key={m.id}>
               {m.name} {m.dose}
-              {m.unit} — {m.frequency} ({m.times.join(", ")})
+              {m.unit} — {frequencyLabel(m.frequency)} ({m.times.join(", ")})
             </li>
           ))}
         </ul>

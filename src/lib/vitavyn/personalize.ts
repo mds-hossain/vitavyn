@@ -1,3 +1,4 @@
+import { isPastMedication } from "./medication";
 import type { MeasurementKind, VitavynData } from "./types";
 
 export const KIND_LABELS: Record<string, string> = {
@@ -65,6 +66,7 @@ export type Dose = {
 export function todaysDoses(data: VitavynData, now = new Date()): Dose[] {
   const todayKey = now.toDateString();
   return data.medications
+    .filter((med) => !isPastMedication(med, now))
     .flatMap((med) => {
       const times = med.schedule?.length ? med.schedule.map((s) => s.time) : med.times;
       return times.map((time) => {

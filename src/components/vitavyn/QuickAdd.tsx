@@ -17,6 +17,8 @@ import { round, toCanonicalValue, canonicalUnit } from "@/lib/vitavyn/units";
 import { UnitValueInput } from "@/components/vitavyn/UnitValueInput";
 import { AddressAutocomplete } from "@/components/vitavyn/AddressAutocomplete";
 import { DoseScheduleField, sortSchedule } from "@/components/vitavyn/DoseScheduleField";
+import { MED_FORMS, unitsForForm } from "@/lib/vitavyn/medication";
+
 import type { DoseSlot } from "@/lib/vitavyn/types";
 
 const ENTRY_TYPES = [
@@ -174,7 +176,7 @@ export function QuickAdd({
             dose: form.dose ?? "",
             unit: form.doseUnit ?? "mg",
             form: form.form ?? "tablet",
-            frequency: sorted.length === 1 ? "Once daily" : `${sorted.length} times daily`,
+            frequency: "every_day",
             schedule: sorted,
             times: sorted.map((s) => s.time),
             conditionIds: [],
@@ -430,26 +432,61 @@ export function QuickAdd({
                       "Name",
                       <Input value={form.name ?? ""} onChange={(e) => set("name", e.target.value)} />,
                     )}
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid gap-3 sm:grid-cols-3">
                       {field(
                         "Dose",
-                        <Input value={form.dose ?? ""} onChange={(e) => set("dose", e.target.value)} />,
+                        <Input
+                          value={form.dose ?? ""}
+                          placeholder="e.g. 5/1000"
+                          onChange={(e) => set("dose", e.target.value)}
+                        />,
                       )}
                       {field(
                         "Unit",
-                        <Input
-                          value={form.doseUnit ?? "mg"}
-                          onChange={(e) => set("doseUnit", e.target.value)}
-                        />,
+                        <Select
+                          value={form.doseUnit ?? unitsForForm(form.form ?? "tablet")[0]!}
+                          onValueChange={(v) => set("doseUnit", v)}
+                          disabled={unitsForForm(form.form ?? "tablet").length === 1}
+                        >
+                          <SelectTrigger aria-label="Unit">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {unitsForForm(form.form ?? "tablet").map((u) => (
+                              <SelectItem key={u} value={u}>
+                                {u}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>,
                       )}
                       {field(
                         "Form",
-                        <Input
+                        <Select
                           value={form.form ?? "tablet"}
-                          onChange={(e) => set("form", e.target.value)}
-                        />,
+                          onValueChange={(v) => {
+                            set("form", v);
+                            const units = unitsForForm(v);
+                            if (!units.includes(form.doseUnit ?? "")) set("doseUnit", units[0]!);
+                          }}
+                        >
+                          <SelectTrigger aria-label="Form">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {MED_FORMS.map((f) => (
+                              <SelectItem key={f.value} value={f.value}>
+                                <span className="flex items-center gap-2">
+                                  <f.icon className="h-4 w-4" strokeWidth={1.75} />
+                                  {f.label}
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>,
                       )}
                     </div>
+
                     <DoseScheduleField schedule={schedule} onChange={setSchedule} />
                   </>
                 )}

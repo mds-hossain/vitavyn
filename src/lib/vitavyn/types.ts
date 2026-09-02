@@ -60,9 +60,12 @@ export type Measurement = Stamped & {
   notes?: string;
 };
 
-export type SlotId = "morning" | "noon" | "evening" | "night";
+export type SlotId = "morning" | "noon" | "evening" | "night" | "custom";
 
-export type DoseSlot = { slot: SlotId; time: string };
+export type MealContext = "fasting" | "before_meal" | "with_meal" | "after_meal" | "anytime";
+
+export type DoseSlot = { slot: SlotId; time: string; mealContext?: MealContext };
+
 
 export type Medication = Stamped & {
   name: string;
