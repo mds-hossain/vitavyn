@@ -78,19 +78,19 @@ function TodayPage() {
     .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())[0];
 
   const attention: { icon: typeof Pill; text: string; to: string }[] = [];
-  if (dueNow.length > 0)
+  if (now && dueNow.length > 0)
     attention.push({
       icon: Pill,
       text: `${dueNow.length} medication ${dueNow.length === 1 ? "dose" : "doses"} to record`,
       to: "/medications",
     });
-  if (staleKinds.length > 0)
+  if (now && staleKinds.length > 0)
     attention.push({
       icon: Clock,
       text: `${staleKinds.map((k) => KIND_LABELS[k] ?? k).join(", ")} not recorded today`,
       to: "/measurements",
     });
-  if (nextAppointment && isTomorrow(new Date(nextAppointment.startsAt)))
+  if (now && nextAppointment && isTomorrow(new Date(nextAppointment.startsAt)))
     attention.push({
       icon: CalendarDays,
       text: `Appointment tomorrow with ${nextAppointment.providerName}`,
@@ -121,7 +121,7 @@ function TodayPage() {
           {now ? format(now, "EEEE, MMMM d") : "\u00a0"}
         </p>
         <h1 className="mt-1 text-2xl font-semibold sm:text-3xl">
-          {greeting(reference.getHours())}, {firstName}
+          {now ? greeting(now.getHours()) : "Hello"}, {firstName}
         </h1>
       </header>
 
