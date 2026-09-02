@@ -1,8 +1,15 @@
-import { Clock } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import type { DoseSlot, SlotId } from "@/lib/vitavyn/types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { MEAL_CONTEXTS } from "@/lib/vitavyn/medication";
+import type { DoseSlot, MealContext, SlotId } from "@/lib/vitavyn/types";
 
 export const SLOTS: { id: SlotId; label: string; defaultTime: string }[] = [
   { id: "morning", label: "Morning", defaultTime: "08:00" },
@@ -11,16 +18,16 @@ export const SLOTS: { id: SlotId; label: string; defaultTime: string }[] = [
   { id: "night", label: "Night", defaultTime: "22:00" },
 ];
 
-export const slotLabel = (id: SlotId) => SLOTS.find((s) => s.id === id)?.label ?? id;
+export const slotLabel = (id: SlotId) =>
+  SLOTS.find((s) => s.id === id)?.label ?? (id === "custom" ? "Custom" : id);
 
 export function sortSchedule(schedule: DoseSlot[]): DoseSlot[] {
-  const order = SLOTS.map((s) => s.id);
-  return [...schedule].sort((a, b) => order.indexOf(a.slot) - order.indexOf(b.slot));
+  return [...schedule].sort((a, b) => a.time.localeCompare(b.time));
 }
 
 /**
- * Pick which parts of the day a medication is taken, then set the exact time
- * for each selected part with a time picker.
+ * Inline dose schedule: four time-of-day blocks that expand in place, plus
+ * custom dose times for more complex regimens.
  */
 export function DoseScheduleField({
   schedule,
@@ -29,17 +36,23 @@ export function DoseScheduleField({
   schedule: DoseSlot[];
   onChange: (next: DoseSlot[]) => void;
 }) {
-  const toggle = (slot: SlotId, defaultTime: string) => {
-    const exists = schedule.some((s) => s.slot === slot);
-    onChange(
-      exists
-        ? schedule.filter((s) => s.slot !== slot)
-        : sortSchedule([...schedule, { slot, time: defaultTime }]),
-    );
+  const update = (index: number, patch: Partial<DoseSlot>) =>
+    onChange(schedule.map((s, i) => (i === index ? { ...s, ...patch } : s)));
+
+  const removeAt = (index: number) => onChange(schedule.filter((_, i) => i !== index));
+
+  const toggleSlot = (slot: SlotId, defaultTime: string) => {
+    const index = schedule.findIndex((s) => s.slot === slot);
+    if (index >= 0) removeAt(index);
+    else onChange(sortSchedule([...schedule, { slot, time: defaultTime, mealContext: "anytime" }]));
   };
 
-  const setTime = (slot: SlotId, time: string) =>
-    onChange(schedule.map((s) => (s.slot === slot ? { ...s, time } : s)));
+  const addCustom = () =>
+    onChange(sortSchedule([...schedule, { slot: "custom", time: "12:00", mealContext: "anytime" }]));
+
+  const rows = schedule
+    .map((dose, index) => ({ dose, index }))
+    .sort((a, b) => a.dose.time.localeCompare(b.dose.time));
 
   return (
     <div className="space-y-3">
@@ -50,50 +63,76 @@ export function DoseScheduleField({
         {SLOTS.map((slot) => {
           const picked = schedule.find((s) => s.slot === slot.id);
           return (
-            <Popover key={slot.id}>
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  aria-pressed={!!picked}
-                  onClick={() => {
-                    if (!picked) toggle(slot.id, slot.defaultTime);
-                  }}
-                  className={`rounded-xl border px-3 py-3 text-center text-sm font-medium transition-colors ${
-                    picked
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-muted-foreground hover:border-primary"
-                  }`}
-                >
-                  <span className="block">{slot.label}</span>
-                  <span className="mt-1 flex items-center justify-center gap-1 text-xs">
-                    <Clock className="h-3 w-3" />
-                    {picked ? picked.time : "off"}
-                  </span>
-                </button>
-              </PopoverTrigger>
-              {picked ? (
-                <PopoverContent className="w-56 space-y-3">
-                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                    {slot.label} time
-                  </Label>
-                  <Input
-                    type="time"
-                    value={picked.time}
-                    onChange={(e) => setTime(slot.id, e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => toggle(slot.id, slot.defaultTime)}
-                    className="text-xs text-muted-foreground underline"
-                  >
-                    Remove {slot.label.toLowerCase()} dose
-                  </button>
-                </PopoverContent>
-              ) : null}
-            </Popover>
+            <button
+              key={slot.id}
+              type="button"
+              aria-pressed={!!picked}
+              onClick={() => toggleSlot(slot.id, slot.defaultTime)}
+              className={`rounded-xl border px-3 py-3 text-center text-sm font-medium transition-colors ${
+                picked
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:border-primary"
+              }`}
+            >
+              {slot.label}
+            </button>
           );
         })}
       </div>
+
+      {rows.length > 0 ? (
+        <div className="space-y-2">
+          {rows.map(({ dose, index }) => (
+            <div
+              key={`${dose.slot}-${index}`}
+              className="rounded-xl border border-border bg-muted/30 p-3"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-medium text-muted-foreground">{slotLabel(dose.slot)}</p>
+                <button
+                  type="button"
+                  aria-label={`Remove ${slotLabel(dose.slot).toLowerCase()} dose`}
+                  onClick={() => removeAt(index)}
+                  className="rounded-md p-1 text-muted-foreground transition-colors hover:text-destructive"
+                >
+                  <X className="h-4 w-4" strokeWidth={1.75} />
+                </button>
+              </div>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                <Input
+                  type="time"
+                  value={dose.time}
+                  aria-label={`${slotLabel(dose.slot)} time`}
+                  onChange={(e) => update(index, { time: e.target.value })}
+                />
+                <Select
+                  value={dose.mealContext ?? "anytime"}
+                  onValueChange={(v) => update(index, { mealContext: v as MealContext })}
+                >
+                  <SelectTrigger aria-label={`${slotLabel(dose.slot)} meal context`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MEAL_CONTEXTS.map((m) => (
+                      <SelectItem key={m.value} value={m.value}>
+                        {m.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <button
+        type="button"
+        onClick={addCustom}
+        className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+      >
+        <Plus className="h-4 w-4" strokeWidth={1.75} /> Add custom dose time
+      </button>
     </div>
   );
 }
