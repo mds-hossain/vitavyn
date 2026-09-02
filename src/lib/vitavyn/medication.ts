@@ -94,11 +94,9 @@ export const WEEKDAYS = [
 
 export const unitsForForm = (value: string) => findMedForm(value).units;
 
-export const medFormLabel = (value: string) =>
-  MED_FORMS.find((f) => f.value === value)?.label ?? value;
+export const medFormLabel = (value: string) => findMedForm(value).label;
 
-export const medFormIcon = (value: string): LucideIcon =>
-  MED_FORMS.find((f) => f.value === value)?.icon ?? Droplets;
+export const medFormIcon = (value: string): LucideIcon => findMedForm(value).icon ?? Droplets;
 
 export const FREQUENCIES = [
   { value: "every_day", label: "Every day" },
