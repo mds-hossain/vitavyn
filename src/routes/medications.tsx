@@ -95,12 +95,24 @@ export function medicationSchedule(med: Medication): DoseSlot[] {
 }
 
 /** Compact secondary chip used across medication cards. */
-function Chip({ children }: { children: React.ReactNode }) {
+function Chip({ children, tone = "muted" }: { children: React.ReactNode; tone?: "muted" | "accent" }) {
   return (
-    <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+    <span
+      className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${
+        tone === "accent" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+      }`}
+    >
       {children}
     </span>
   );
+}
+
+/** "Mon, Wed, Fri" for a specific-days medication. */
+function daysLabel(days: number[]): string {
+  if (days.length === 0) return "Specific days";
+  return WEEKDAYS.filter((d) => days.includes(d.value))
+    .map((d) => d.label.slice(0, 3))
+    .join(", ");
 }
 
 type MedForm = {
