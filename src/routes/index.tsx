@@ -15,6 +15,7 @@ import { Panel, SafetyNote, StatusPill } from "@/components/vitavyn/primitives";
 import { MeasurementCard } from "@/components/vitavyn/MeasurementCard";
 import { QuickAdd } from "@/components/vitavyn/QuickAdd";
 import { buildTimeline, useVitavyn } from "@/lib/vitavyn/store";
+import { medFormIcon } from "@/lib/vitavyn/medication";
 import {
   KIND_LABELS,
   doseState,
