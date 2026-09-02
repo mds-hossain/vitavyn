@@ -501,29 +501,49 @@ function MedicationsPage() {
           </DialogHeader>
 
           <div className="space-y-4">
-            {/* Row 1 — name */}
-            <div className="space-y-1.5">
-              <Label htmlFor="med-name">Medication name</Label>
-              <div className="relative">
-                <FormIcon
-                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                  strokeWidth={1.75}
-                />
-                <Input
-                  id="med-name"
-                  className="pl-9"
-                  value={form.name}
-                  placeholder="e.g. Metformin"
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                />
+            <div className="grid grid-cols-2 gap-4">
+              {/* Name */}
+              <div className="col-span-2 space-y-1.5 sm:col-span-1">
+                <Label htmlFor="med-name">Medication name</Label>
+                <div className="relative">
+                  <FormIcon
+                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                    strokeWidth={1.75}
+                  />
+                  <Input
+                    id="med-name"
+                    className="pl-9"
+                    value={form.name}
+                    placeholder="e.g. Metformin"
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  />
+                </div>
+                {generic ? (
+                  <p className="text-xs text-muted-foreground">Generic equivalent: {generic}</p>
+                ) : null}
               </div>
-              {generic ? (
-                <p className="text-xs text-muted-foreground">Generic equivalent: {generic}</p>
-              ) : null}
-            </div>
 
-            {/* Row 2 — dose + unit */}
-            <div className="grid gap-4 sm:grid-cols-2">
+              {/* Form */}
+              <div className="col-span-2 space-y-1.5 sm:col-span-1">
+                <Label>Form</Label>
+                <Select value={form.form} onValueChange={setFormKind}>
+                  <SelectTrigger aria-label="Form">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MED_FORMS.map((f) => (
+                      <SelectItem key={f.value} value={f.value}>
+                        <span className="flex items-center gap-2">
+                          <f.icon className="h-4 w-4" strokeWidth={1.75} />
+                          {f.label}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Dose */}
               <div className="space-y-1.5">
                 <Label htmlFor="med-dose">Dose</Label>
                 <Input
@@ -533,6 +553,8 @@ function MedicationsPage() {
                   onChange={(e) => setForm({ ...form, dose: e.target.value })}
                 />
               </div>
+
+              {/* Unit */}
               <div className="space-y-1.5">
                 <Label>Unit</Label>
                 <Select
@@ -552,29 +574,9 @@ function MedicationsPage() {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
 
-            {/* Row 3 — form + frequency */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>Form</Label>
-                <Select value={form.form} onValueChange={setFormKind}>
-                  <SelectTrigger aria-label="Form">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MED_FORMS.map((f) => (
-                      <SelectItem key={f.value} value={f.value}>
-                        <span className="flex items-center gap-2">
-                          <f.icon className="h-4 w-4" strokeWidth={1.75} />
-                          {f.label}
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
+              {/* Frequency */}
+              <div className="col-span-2 space-y-1.5 sm:col-span-1">
                 <Label>Frequency</Label>
                 <Select value={form.frequency} onValueChange={setFrequency}>
                   <SelectTrigger aria-label="Frequency">
@@ -589,58 +591,59 @@ function MedicationsPage() {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
 
-            {/* Conditional: specific days selector */}
-            {form.frequency === "specific_days" ? (
-              <div className="space-y-2">
-                <Label className="text-sm">Which days?</Label>
-                <div className="flex gap-1.5">
-                  {WEEKDAYS.map((day) => {
-                    const active = form.daysOfWeek.includes(day.value);
-                    return (
-                      <button
-                        key={day.value}
-                        type="button"
-                        aria-label={day.label}
-                        aria-pressed={active}
-                        onClick={() => toggleDay(day.value)}
-                        className={`h-9 flex-1 rounded-full border text-sm font-medium transition-colors ${
-                          active
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border text-muted-foreground hover:border-primary"
-                        }`}
-                      >
-                        {day.short}
-                      </button>
-                    );
-                  })}
-                </div>
+              {/* Related condition */}
+              <div className="col-span-2 space-y-1.5 sm:col-span-1">
+                <Label>Related condition</Label>
+                <Select
+                  value={form.conditionId}
+                  onValueChange={(v) => setForm({ ...form, conditionId: v })}
+                >
+                  <SelectTrigger aria-label="Related condition">
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {data.conditions
+                      .filter((c) => c.status !== "resolved")
+                      .map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
               </div>
-            ) : null}
 
-            {/* Row 4 — related condition */}
-            <div className="space-y-1.5">
-              <Label>Related condition</Label>
-              <Select
-                value={form.conditionId}
-                onValueChange={(v) => setForm({ ...form, conditionId: v })}
-              >
-                <SelectTrigger aria-label="Related condition">
-                  <SelectValue placeholder="None" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {data.conditions
-                    .filter((c) => c.status !== "resolved")
-                    .map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+              {/* Conditional: specific days selector, directly below frequency */}
+              {form.frequency === "specific_days" ? (
+                <div className="col-span-2 space-y-2">
+                  <Label className="text-sm">Which days?</Label>
+                  <div className="flex gap-1.5">
+                    {WEEKDAYS.map((day) => {
+                      const active = form.daysOfWeek.includes(day.value);
+                      return (
+                        <button
+                          key={day.value}
+                          type="button"
+                          aria-label={day.label}
+                          aria-pressed={active}
+                          onClick={() => toggleDay(day.value)}
+                          className={`h-9 flex-1 rounded-full border text-sm font-medium transition-colors ${
+                            active
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border text-muted-foreground hover:border-primary"
+                          }`}
+                        >
+                          {day.short}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
             </div>
+
 
             {/* Schedule — hidden entirely for PRN */}
             {asNeeded ? (
