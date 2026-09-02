@@ -74,6 +74,15 @@ export function clampToSlot(slot: SlotId, time: string): string {
   return time;
 }
 
+/** Render "HH:mm" in the user's preferred clock format. */
+export function formatTimeOfDay(time: string, twelveHour = false): string {
+  const [h, m] = time.split(":");
+  const hour = Number(h ?? 0);
+  const minute = String(m ?? "00").padStart(2, "0");
+  if (!twelveHour) return `${String(hour).padStart(2, "0")}:${minute}`;
+  return `${((hour + 11) % 12) + 1}:${minute} ${hour < 12 ? "AM" : "PM"}`;
+}
+
 export function slotForTime(time: string): SlotId {
   const v = toMinutes(time);
   if (v >= 360 && v < 720) return "morning";

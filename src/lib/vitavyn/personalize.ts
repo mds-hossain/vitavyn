@@ -63,6 +63,7 @@ export type Dose = {
   conditionName?: string | undefined;
   time: string;
   scheduled: Date;
+  logId?: string | undefined;
   status: "recorded" | "skipped" | "pending";
 };
 
@@ -119,6 +120,7 @@ export function todaysDoses(data: VitavynData, now = new Date()): Dose[] {
           conditionName,
           time: entry.time,
           scheduled,
+          logId: log?.id,
           status: (log?.status ?? "pending") as Dose["status"],
         };
       });

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/vitavyn/DatePicker";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -620,10 +621,10 @@ export function QuickAdd({
                 {field("Note", <Textarea value={form.title ?? ""} onChange={(e) => set("title", e.target.value)} />)}
                 {field(
                   "Due date",
-                  <Input
-                    type="date"
-                    value={form.dueDate ?? ""}
-                    onChange={(e) => set("dueDate", e.target.value)}
+                  <DatePicker
+                    label="Due date"
+                    value={(form.dueDate as string) ?? ""}
+                    onChange={(v) => set("dueDate", v)}
                   />,
                 )}
               </>

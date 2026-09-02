@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/vitavyn/DatePicker";
 import { Switch } from "@/components/ui/switch";
 import {
   AlertDialog,
@@ -80,10 +81,10 @@ function SettingsPage() {
           </div>
           <div className="space-y-1.5">
             <Label>Date of birth</Label>
-            <Input
-              type="date"
+            <DatePicker
+              label="Date of birth"
               value={profile.dateOfBirth ?? ""}
-              onChange={(e) => setProfile({ dateOfBirth: e.target.value })}
+              onChange={(v) => setProfile({ dateOfBirth: v })}
             />
           </div>
           <div className="space-y-1.5">
@@ -134,6 +135,24 @@ function SettingsPage() {
           <div className="space-y-2">
             <Label>Temperature</Label>
             {toggleUnit("tempUnit", ["°C", "°F"])}
+          </div>
+          <div className="space-y-2">
+            <Label>Time format</Label>
+            <div className="flex gap-2">
+              {(["24h", "12h"] as const).map((option) => (
+                <button
+                  key={option}
+                  onClick={() => setPreferences({ timeFormat: option })}
+                  className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                    (preferences.timeFormat ?? "24h") === option
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {option === "24h" ? "24-hour" : "12-hour"}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </Panel>

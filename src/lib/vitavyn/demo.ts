@@ -76,6 +76,7 @@ export function buildDemoData(): VitavynData {
       glucoseUnit: "mg/dL",
       weightUnit: "kg",
       tempUnit: "°C",
+      timeFormat: "24h",
       theme: "light",
       storageTier: "local",
     },

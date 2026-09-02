@@ -44,6 +44,7 @@ import {
   SafetyNote,
   StatusPill,
 } from "@/components/vitavyn/primitives";
+import { DatePicker } from "@/components/vitavyn/DatePicker";
 import {
   DoseScheduleField,
   slotIcon,
@@ -56,11 +57,11 @@ import {
   WEEKDAYS,
   clampToSlot,
   findMedForm,
+  formatTimeOfDay,
   frequencyLabel,
   genericFor,
   isPastMedication,
   medFormIcon,
-  medFormLabel,
   mealContextLabel,
   normalizeForm,
   slotForTime,
@@ -94,12 +95,24 @@ export function medicationSchedule(med: Medication): DoseSlot[] {
 }
 
 /** Compact secondary chip used across medication cards. */
-function Chip({ children }: { children: React.ReactNode }) {
+function Chip({ children, tone = "muted" }: { children: React.ReactNode; tone?: "muted" | "accent" }) {
   return (
-    <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+    <span
+      className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${
+        tone === "accent" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+      }`}
+    >
       {children}
     </span>
   );
+}
+
+/** "Mon, Wed, Fri" for a specific-days medication. */
+function daysLabel(days: number[]): string {
+  if (days.length === 0) return "Specific days";
+  return WEEKDAYS.filter((d) => days.includes(d.value))
+    .map((d) => d.label.slice(0, 3))
+    .join(", ");
 }
 
 type MedForm = {
@@ -299,6 +312,7 @@ function MedicationsPage() {
     toast.success("Medication deleted");
   };
 
+  const twelveHour = data.preferences.timeFormat === "12h";
   const takenCount = todaysLogs.filter((l) => l.status === "recorded").length;
   const generic = genericFor(form.name);
   const unitOptions = unitsForForm(form.form);
@@ -313,17 +327,18 @@ function MedicationsPage() {
         <div className="flex items-start gap-3">
           <Icon className="mt-0.5 h-5 w-5 shrink-0 text-primary" strokeWidth={1.75} />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-base font-semibold leading-tight">{med.name}</p>
+            <p className="truncate text-base font-semibold leading-tight">
+              {med.name}
+              {med.dose ? ` ${med.dose} ${med.unit}` : ""}
+            </p>
 
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {med.dose ? (
-                <Chip>
-                  {med.dose} {med.unit}
-                </Chip>
-              ) : null}
-              <Chip>{medFormLabel(med.form)}</Chip>
-              {condition ? <Chip>{condition}</Chip> : null}
-              <Chip>{frequencyLabel(med.frequency)}</Chip>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {condition ? <Chip tone="accent">{condition}</Chip> : null}
+              <Chip>
+                {med.frequency === "specific_days"
+                  ? daysLabel(med.daysOfWeek ?? [])
+                  : frequencyLabel(med.frequency)}
+              </Chip>
             </div>
 
             {med.frequency === "as_needed" ? (
@@ -341,7 +356,7 @@ function MedicationsPage() {
                       className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
                     >
                       <SlotIcon className="h-3.5 w-3.5" strokeWidth={1.75} />
-                      <span className="font-medium text-foreground">{dose.time}</span>
+                      <span className="font-medium text-foreground">{formatTimeOfDay(dose.time, twelveHour)}</span>
                       {mealContextLabel(dose.mealContext)}
                     </span>
                   );
@@ -420,7 +435,7 @@ function MedicationsPage() {
                 >
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="w-16 shrink-0">
-                      <p className="metric-value text-sm">{dose.time}</p>
+                      <p className="metric-value text-sm">{formatTimeOfDay(dose.time, twelveHour)}</p>
                       <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                         <SlotIcon className="h-3 w-3" strokeWidth={1.75} />
                         {slotLabel(dose.slot)}
@@ -428,8 +443,7 @@ function MedicationsPage() {
                     </div>
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">
-                        {med.name} {med.dose}
-                        {med.unit}
+                        {med.name} {med.dose} {med.unit}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {mealContextLabel(dose.mealContext)}
@@ -501,29 +515,49 @@ function MedicationsPage() {
           </DialogHeader>
 
           <div className="space-y-4">
-            {/* Row 1 — name */}
-            <div className="space-y-1.5">
-              <Label htmlFor="med-name">Medication name</Label>
-              <div className="relative">
-                <FormIcon
-                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                  strokeWidth={1.75}
-                />
-                <Input
-                  id="med-name"
-                  className="pl-9"
-                  value={form.name}
-                  placeholder="e.g. Metformin"
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                />
+            <div className="grid grid-cols-2 gap-4">
+              {/* Name */}
+              <div className="col-span-2 space-y-1.5 sm:col-span-1">
+                <Label htmlFor="med-name">Medication name</Label>
+                <div className="relative">
+                  <FormIcon
+                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                    strokeWidth={1.75}
+                  />
+                  <Input
+                    id="med-name"
+                    className="pl-9"
+                    value={form.name}
+                    placeholder="e.g. Metformin"
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  />
+                </div>
+                {generic ? (
+                  <p className="text-xs text-muted-foreground">Generic equivalent: {generic}</p>
+                ) : null}
               </div>
-              {generic ? (
-                <p className="text-xs text-muted-foreground">Generic equivalent: {generic}</p>
-              ) : null}
-            </div>
 
-            {/* Row 2 — dose + unit */}
-            <div className="grid gap-4 sm:grid-cols-2">
+              {/* Form */}
+              <div className="col-span-2 space-y-1.5 sm:col-span-1">
+                <Label>Form</Label>
+                <Select value={form.form} onValueChange={setFormKind}>
+                  <SelectTrigger aria-label="Form">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MED_FORMS.map((f) => (
+                      <SelectItem key={f.value} value={f.value}>
+                        <span className="flex items-center gap-2">
+                          <f.icon className="h-4 w-4" strokeWidth={1.75} />
+                          {f.label}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Dose */}
               <div className="space-y-1.5">
                 <Label htmlFor="med-dose">Dose</Label>
                 <Input
@@ -533,6 +567,8 @@ function MedicationsPage() {
                   onChange={(e) => setForm({ ...form, dose: e.target.value })}
                 />
               </div>
+
+              {/* Unit */}
               <div className="space-y-1.5">
                 <Label>Unit</Label>
                 <Select
@@ -552,29 +588,9 @@ function MedicationsPage() {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
 
-            {/* Row 3 — form + frequency */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>Form</Label>
-                <Select value={form.form} onValueChange={setFormKind}>
-                  <SelectTrigger aria-label="Form">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MED_FORMS.map((f) => (
-                      <SelectItem key={f.value} value={f.value}>
-                        <span className="flex items-center gap-2">
-                          <f.icon className="h-4 w-4" strokeWidth={1.75} />
-                          {f.label}
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
+              {/* Frequency */}
+              <div className="col-span-2 space-y-1.5 sm:col-span-1">
                 <Label>Frequency</Label>
                 <Select value={form.frequency} onValueChange={setFrequency}>
                   <SelectTrigger aria-label="Frequency">
@@ -589,58 +605,59 @@ function MedicationsPage() {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
 
-            {/* Conditional: specific days selector */}
-            {form.frequency === "specific_days" ? (
-              <div className="space-y-2">
-                <Label className="text-sm">Which days?</Label>
-                <div className="flex gap-1.5">
-                  {WEEKDAYS.map((day) => {
-                    const active = form.daysOfWeek.includes(day.value);
-                    return (
-                      <button
-                        key={day.value}
-                        type="button"
-                        aria-label={day.label}
-                        aria-pressed={active}
-                        onClick={() => toggleDay(day.value)}
-                        className={`h-9 flex-1 rounded-full border text-sm font-medium transition-colors ${
-                          active
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border text-muted-foreground hover:border-primary"
-                        }`}
-                      >
-                        {day.short}
-                      </button>
-                    );
-                  })}
-                </div>
+              {/* Related condition */}
+              <div className="col-span-2 space-y-1.5 sm:col-span-1">
+                <Label>Related condition</Label>
+                <Select
+                  value={form.conditionId}
+                  onValueChange={(v) => setForm({ ...form, conditionId: v })}
+                >
+                  <SelectTrigger aria-label="Related condition">
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {data.conditions
+                      .filter((c) => c.status !== "resolved")
+                      .map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
               </div>
-            ) : null}
 
-            {/* Row 4 — related condition */}
-            <div className="space-y-1.5">
-              <Label>Related condition</Label>
-              <Select
-                value={form.conditionId}
-                onValueChange={(v) => setForm({ ...form, conditionId: v })}
-              >
-                <SelectTrigger aria-label="Related condition">
-                  <SelectValue placeholder="None" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {data.conditions
-                    .filter((c) => c.status !== "resolved")
-                    .map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+              {/* Conditional: specific days selector, directly below frequency */}
+              {form.frequency === "specific_days" ? (
+                <div className="col-span-2 space-y-2">
+                  <Label className="text-sm">Which days?</Label>
+                  <div className="flex gap-1.5">
+                    {WEEKDAYS.map((day) => {
+                      const active = form.daysOfWeek.includes(day.value);
+                      return (
+                        <button
+                          key={day.value}
+                          type="button"
+                          aria-label={day.label}
+                          aria-pressed={active}
+                          onClick={() => toggleDay(day.value)}
+                          className={`h-9 flex-1 rounded-full border text-sm font-medium transition-colors ${
+                            active
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border text-muted-foreground hover:border-primary"
+                          }`}
+                        >
+                          {day.short}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
             </div>
+
 
             {/* Schedule — hidden entirely for PRN */}
             {asNeeded ? (
@@ -690,23 +707,23 @@ function MedicationsPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="med-start">Start date</Label>
-                      <Input
-                        id="med-start"
-                        type="date"
-                        value={form.startDate}
-                        onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="med-end">End date</Label>
-                      <Input
-                        id="med-end"
-                        type="date"
-                        value={form.endDate}
-                        onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                      />
+                    <div className="grid grid-cols-2 gap-4 sm:col-span-2">
+                      <div className="space-y-1.5">
+                        <Label>Start date</Label>
+                        <DatePicker
+                          label="Start date"
+                          value={form.startDate}
+                          onChange={(v) => setForm({ ...form, startDate: v })}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>End date</Label>
+                        <DatePicker
+                          label="End date"
+                          value={form.endDate}
+                          onChange={(v) => setForm({ ...form, endDate: v })}
+                        />
+                      </div>
                     </div>
                     <div className="space-y-1.5 sm:col-span-2">
                       <Label htmlFor="med-notes">Notes</Label>
