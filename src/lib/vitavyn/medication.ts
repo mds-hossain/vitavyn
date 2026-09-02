@@ -5,7 +5,7 @@ import {
   Eye,
   Pill,
   Syringe,
-  Tube,
+  PillBottle,
   Wind,
   type LucideIcon,
 } from "lucide-react";
@@ -25,7 +25,7 @@ export const MED_FORMS: MedFormDef[] = [
   { value: "insulin_vial", label: "Insulin Vial & Syringe", icon: Syringe, units: ["IU"] },
   { value: "liquid", label: "Liquid / Syrup", icon: Droplet, units: ["mL"] },
   { value: "inhaler", label: "Inhaler / Puff", icon: Wind, units: ["Puffs"] },
-  { value: "cream", label: "Cream / Ointment", icon: Tube, units: ["mg", "g"] },
+  { value: "cream", label: "Cream / Ointment", icon: PillBottle, units: ["mg", "g"] },
   { value: "drops", label: "Drops (Eye / Ear)", icon: Eye, units: ["Drops"] },
   { value: "patch", label: "Patch", icon: Bandage, units: ["mcg", "mg"] },
 ];
