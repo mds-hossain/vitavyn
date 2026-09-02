@@ -206,36 +206,48 @@ function TodayPage() {
           <ul className="space-y-2">
             {doses.map((dose) => {
               const state = doseState(dose, reference);
+              const Icon = medFormIcon(dose.form);
               return (
                 <li
                   key={dose.medicationId + dose.time}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-border px-4 py-3"
+                  className="rounded-xl border border-border px-4 py-3"
                 >
-                  <div className="min-w-0">
-                    <p className="metric-value text-base">{dose.time}</p>
-                    <p className="truncate text-sm font-medium">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="metric-value text-sm text-muted-foreground">{dose.time}</span>
+                    {state === "recorded" ? (
+                      <StatusPill tone="success">
+                        <CheckCircle2 className="h-3.5 w-3.5" /> Recorded
+                      </StatusPill>
+                    ) : state === "not-taken" ? (
+                      <StatusPill tone="warning">
+                        <AlertCircle className="h-3.5 w-3.5" /> Not taken
+                      </StatusPill>
+                    ) : state === "due" ? (
+                      <Button
+                        size="sm"
+                        onClick={() => recordDose(dose.medicationId, dose.scheduled)}
+                      >
+                        Record dose
+                      </Button>
+                    ) : (
+                      <StatusPill>
+                        <Clock className="h-3.5 w-3.5" /> In{" "}
+                        {formatDistanceToNowStrict(dose.scheduled)}
+                      </StatusPill>
+                    )}
+                  </div>
+                  <p className="mt-1.5 flex min-w-0 items-center gap-2 text-sm font-medium">
+                    <Icon className="h-4 w-4 shrink-0 text-primary" strokeWidth={1.75} />
+                    <span className="truncate">
                       {dose.name} {dose.dose}
                       {dose.unit}
-                    </p>
-                  </div>
-                  {state === "recorded" ? (
-                    <StatusPill tone="success">
-                      <CheckCircle2 className="h-3.5 w-3.5" /> Recorded
-                    </StatusPill>
-                  ) : state === "not-taken" ? (
-                    <StatusPill tone="warning">
-                      <AlertCircle className="h-3.5 w-3.5" /> Not taken
-                    </StatusPill>
-                  ) : state === "due" ? (
-                    <Button size="sm" onClick={() => recordDose(dose.medicationId, dose.scheduled)}>
-                      Record dose
-                    </Button>
-                  ) : (
-                    <StatusPill>
-                      <Clock className="h-3.5 w-3.5" /> In{" "}
-                      {formatDistanceToNowStrict(dose.scheduled)}
-                    </StatusPill>
-                  )}
+                    </span>
+                  </p>
+                  {dose.conditionName ? (
+                    <span className="mt-2 inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                      {dose.conditionName}
+                    </span>
+                  ) : null}
                 </li>
               );
             })}
