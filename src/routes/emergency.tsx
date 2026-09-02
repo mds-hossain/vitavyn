@@ -1,3 +1,4 @@
+import { frequencyLabel } from "@/lib/vitavyn/medication";
 import { createFileRoute } from "@tanstack/react-router";
 import { Phone, ShieldAlert } from "lucide-react";
 import { PageHeader, Panel, SafetyNote } from "@/components/vitavyn/primitives";
@@ -66,7 +67,7 @@ function EmergencyPage() {
               {data.medications.map((m) => (
                 <li key={m.id}>
                   {m.name} {m.dose}
-                  {m.unit} · {m.frequency}
+                  {m.unit} · {frequencyLabel(m.frequency)}
                 </li>
               ))}
             </ul>
