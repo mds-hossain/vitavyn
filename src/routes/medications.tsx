@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { format, isSameDay } from "date-fns";
-import { Check, Pencil, Pill, Plus, SkipForward, Trash2 } from "lucide-react";
+import { Check, Pencil, Plus, SkipForward, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,21 +37,37 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { EmptyState, PageHeader, Panel, SafetyNote, StatusPill } from "@/components/vitavyn/primitives";
-import { DoseScheduleField, slotLabel, sortSchedule } from "@/components/vitavyn/DoseScheduleField";
+import {
+  EmptyState,
+  PageHeader,
+  Panel,
+  SafetyNote,
+  StatusPill,
+} from "@/components/vitavyn/primitives";
+import {
+  DoseScheduleField,
+  slotIcon,
+  slotLabel,
+  sortSchedule,
+} from "@/components/vitavyn/DoseScheduleField";
 import {
   FREQUENCIES,
   MED_FORMS,
+  WEEKDAYS,
+  clampToSlot,
+  findMedForm,
   frequencyLabel,
   genericFor,
   isPastMedication,
   medFormIcon,
   medFormLabel,
   mealContextLabel,
+  normalizeForm,
+  slotForTime,
   unitsForForm,
 } from "@/lib/vitavyn/medication";
 import { useVitavyn } from "@/lib/vitavyn/store";
-import type { DoseSlot, Medication, SlotId } from "@/lib/vitavyn/types";
+import type { DoseSlot, Medication } from "@/lib/vitavyn/types";
 
 export const Route = createFileRoute("/medications")({
   head: () => ({
@@ -59,30 +75,31 @@ export const Route = createFileRoute("/medications")({
       { title: "Medications — Vitavyn" },
       {
         name: "description",
-        content: "Medication list, daily schedule, adherence history and refill reminders in one calm view.",
+        content:
+          "Medication list, daily schedule, adherence history and refill reminders in one calm view.",
       },
       { property: "og:title", content: "Medications — Vitavyn" },
-      { property: "og:description", content: "Schedules, adherence and refills without the clutter." },
+      {
+        property: "og:description",
+        content: "Schedules, adherence and refills without the clutter.",
+      },
     ],
   }),
   component: MedicationsPage,
 });
 
-function inferSlot(time: string): SlotId {
-  const hour = Number(time.split(":")[0] ?? 8);
-  if (hour < 11) return "morning";
-  if (hour < 16) return "noon";
-  if (hour < 21) return "evening";
-  return "night";
-}
-
 export function medicationSchedule(med: Medication): DoseSlot[] {
   if (med.schedule?.length) return sortSchedule(med.schedule);
-  return sortSchedule((med.times ?? []).map((time) => ({ slot: inferSlot(time), time })));
+  return sortSchedule((med.times ?? []).map((time) => ({ slot: slotForTime(time), time })));
 }
 
-function describeSchedule(schedule: DoseSlot[]) {
-  return schedule.map((s) => `${slotLabel(s.slot)} ${s.time}`).join(" · ") || "No times set";
+/** Compact secondary chip used across medication cards. */
+function Chip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+      {children}
+    </span>
+  );
 }
 
 type MedForm = {
@@ -97,7 +114,11 @@ type MedForm = {
   endDate: string;
   notes: string;
   schedule: DoseSlot[];
+  daysOfWeek: number[];
+  maxDosesPerDay: string;
 };
+
+const todayInput = () => format(new Date(), "yyyy-MM-dd");
 
 const emptyForm: MedForm = {
   name: "",
@@ -111,6 +132,8 @@ const emptyForm: MedForm = {
   endDate: "",
   notes: "",
   schedule: [{ slot: "morning", time: "08:00", mealContext: "anytime" }],
+  daysOfWeek: [],
+  maxDosesPerDay: "",
 };
 
 function MedicationsPage() {
@@ -121,7 +144,9 @@ function MedicationsPage() {
   const [form, setForm] = useState<MedForm>(emptyForm);
 
   const today = new Date();
-  const todaysLogs = data.medicationLogs.filter((log) => isSameDay(new Date(log.scheduledFor), today));
+  const todaysLogs = data.medicationLogs.filter((log) =>
+    isSameDay(new Date(log.scheduledFor), today),
+  );
 
   const current = useMemo(
     () => data.medications.filter((m) => !isPastMedication(m)),
@@ -129,11 +154,16 @@ function MedicationsPage() {
   );
   const past = useMemo(() => data.medications.filter((m) => isPastMedication(m)), [data.medications]);
 
+  const conditionNameFor = (med: Medication) =>
+    data.conditions.find((c) => med.conditionIds?.includes(c.id))?.name;
+
   const schedule = current
+    .filter((med) => med.frequency !== "as_needed")
     .flatMap((med) =>
       medicationSchedule(med).map((dose) => {
         const log = todaysLogs.find(
-          (l) => l.medicationId === med.id && format(new Date(l.scheduledFor), "HH:mm") === dose.time,
+          (l) =>
+            l.medicationId === med.id && format(new Date(l.scheduledFor), "HH:mm") === dose.time,
         );
         return { med, dose, log };
       }),
@@ -161,11 +191,13 @@ function MedicationsPage() {
 
   const openEdit = (med: Medication) => {
     setEditingId(med.id);
+    const kind = normalizeForm(med.form);
+    const units = unitsForForm(kind);
     setForm({
       name: med.name,
       dose: med.dose,
-      unit: med.unit,
-      form: MED_FORMS.some((f) => f.value === med.form) ? med.form : "tablet",
+      unit: units.includes(med.unit) ? med.unit : units[0]!,
+      form: kind,
       frequency: FREQUENCIES.some((f) => f.value === med.frequency) ? med.frequency : "every_day",
       conditionId: med.conditionIds?.[0] ?? "none",
       prescriber: med.prescriber || "none",
@@ -173,6 +205,8 @@ function MedicationsPage() {
       endDate: med.endDate ? med.endDate.slice(0, 10) : "",
       notes: med.notes ?? "",
       schedule: medicationSchedule(med),
+      daysOfWeek: med.daysOfWeek ?? [],
+      maxDosesPerDay: med.maxDosesPerDay ? String(med.maxDosesPerDay) : "",
     });
     setOpen(true);
   };
@@ -186,16 +220,41 @@ function MedicationsPage() {
     }));
   };
 
+  const setFrequency = (value: string) => {
+    setForm((prev) => ({
+      ...prev,
+      frequency: value,
+      // Every-other-day cycles are anchored on a start date, so seed it with today.
+      startDate: value === "every_other_day" && !prev.startDate ? todayInput() : prev.startDate,
+    }));
+  };
+
+  const toggleDay = (day: number) =>
+    setForm((prev) => ({
+      ...prev,
+      daysOfWeek: prev.daysOfWeek.includes(day)
+        ? prev.daysOfWeek.filter((d) => d !== day)
+        : [...prev.daysOfWeek, day],
+    }));
+
+  const asNeeded = form.frequency === "as_needed";
+
   const saveMedication = () => {
     if (!form.name.trim()) {
       toast.error("Medication name is required");
       return;
     }
-    if (form.schedule.length === 0 && form.frequency !== "as_needed") {
+    if (!asNeeded && form.schedule.length === 0) {
       toast.error("Pick at least one time of day");
       return;
     }
-    const ordered = sortSchedule(form.schedule);
+    if (form.frequency === "specific_days" && form.daysOfWeek.length === 0) {
+      toast.error("Pick at least one day of the week");
+      return;
+    }
+    const ordered = asNeeded
+      ? []
+      : sortSchedule(form.schedule.map((s) => ({ ...s, time: clampToSlot(s.slot, s.time) })));
     const payload = {
       name: form.name.trim(),
       dose: form.dose,
@@ -209,6 +268,8 @@ function MedicationsPage() {
       startDate: form.startDate ? new Date(form.startDate).toISOString() : undefined,
       endDate: form.endDate ? new Date(form.endDate).toISOString() : null,
       notes: form.notes,
+      daysOfWeek: form.frequency === "specific_days" ? form.daysOfWeek : [],
+      maxDosesPerDay: asNeeded && form.maxDosesPerDay ? Number(form.maxDosesPerDay) : null,
     };
 
     if (editingId) {
@@ -241,34 +302,72 @@ function MedicationsPage() {
   const takenCount = todaysLogs.filter((l) => l.status === "recorded").length;
   const generic = genericFor(form.name);
   const unitOptions = unitsForForm(form.form);
+  const FormIcon = findMedForm(form.form).icon;
 
   const MedCard = ({ med, archived }: { med: Medication; archived?: boolean }) => {
     const Icon = medFormIcon(med.form);
+    const condition = conditionNameFor(med);
+    const doses = medicationSchedule(med);
     return (
       <li className={`rounded-xl border border-border p-4 ${archived ? "opacity-60" : ""}`}>
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <Icon className="mt-0.5 h-5 w-5 text-primary" strokeWidth={1.75} />
-            <div>
-              <p className="font-medium">{med.name}</p>
-              <p className="text-xs text-muted-foreground">
-                {med.dose} {med.unit} · {medFormLabel(med.form)} · {frequencyLabel(med.frequency)}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {describeSchedule(medicationSchedule(med))}
-              </p>
-              {med.prescriber ? (
-                <p className="mt-1 text-xs text-muted-foreground">Prescribed by {med.prescriber}</p>
+        <div className="flex items-start gap-3">
+          <Icon className="mt-0.5 h-5 w-5 shrink-0 text-primary" strokeWidth={1.75} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-base font-semibold leading-tight">{med.name}</p>
+
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {med.dose ? (
+                <Chip>
+                  {med.dose} {med.unit}
+                </Chip>
               ) : null}
-              {archived && med.endDate ? (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Ended {format(new Date(med.endDate), "d MMM yyyy")}
-                </p>
-              ) : null}
+              <Chip>{medFormLabel(med.form)}</Chip>
+              {condition ? <Chip>{condition}</Chip> : null}
+              <Chip>{frequencyLabel(med.frequency)}</Chip>
             </div>
+
+            {med.frequency === "as_needed" ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Taken as needed
+                {med.maxDosesPerDay ? ` · max ${med.maxDosesPerDay} per day` : ""}
+              </p>
+            ) : doses.length > 0 ? (
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                {doses.map((dose) => {
+                  const SlotIcon = slotIcon(dose.slot);
+                  return (
+                    <span
+                      key={`${dose.slot}-${dose.time}`}
+                      className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
+                    >
+                      <SlotIcon className="h-3.5 w-3.5" strokeWidth={1.75} />
+                      <span className="font-medium text-foreground">{dose.time}</span>
+                      {mealContextLabel(dose.mealContext)}
+                    </span>
+                  );
+                })}
+              </div>
+            ) : null}
+
+            {med.prescriber ? (
+              <p className="mt-2 text-xs text-muted-foreground/80">
+                Prescribed by {med.prescriber}
+              </p>
+            ) : null}
+            {archived && med.endDate ? (
+              <p className="mt-1 text-xs text-muted-foreground/80">
+                Ended {format(new Date(med.endDate), "d MMM yyyy")}
+              </p>
+            ) : null}
           </div>
+
           <div className="flex shrink-0">
-            <Button variant="ghost" size="icon" aria-label={`Edit ${med.name}`} onClick={() => openEdit(med)}>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`Edit ${med.name}`}
+              onClick={() => openEdit(med)}
+            >
               <Pencil className="h-4 w-4" strokeWidth={1.75} />
             </Button>
             <Button
@@ -306,46 +405,68 @@ function MedicationsPage() {
         }
       >
         {schedule.length === 0 ? (
-          <EmptyState title="No doses scheduled" description="Add a medication and choose morning, noon, evening or night." />
+          <EmptyState
+            title="No doses scheduled"
+            description="Add a medication and choose morning, noon, evening or night."
+          />
         ) : (
           <ul className="divide-y divide-border">
-            {schedule.map(({ med, dose, log }) => (
-              <li key={med.id + dose.time} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-20">
-                    <p className="metric-value text-sm">{dose.time}</p>
-                    <p className="text-xs text-muted-foreground">{slotLabel(dose.slot)}</p>
+            {schedule.map(({ med, dose, log }) => {
+              const SlotIcon = slotIcon(dose.slot);
+              return (
+                <li
+                  key={med.id + dose.time}
+                  className="flex flex-wrap items-center justify-between gap-3 py-3"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="w-16 shrink-0">
+                      <p className="metric-value text-sm">{dose.time}</p>
+                      <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                        <SlotIcon className="h-3 w-3" strokeWidth={1.75} />
+                        {slotLabel(dose.slot)}
+                      </p>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">
+                        {med.name} {med.dose}
+                        {med.unit}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {mealContextLabel(dose.mealContext)}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium">{med.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {med.dose} {med.unit} · {mealContextLabel(dose.mealContext)}
-                    </p>
-                  </div>
-                </div>
-                {log ? (
-                  <StatusPill tone={log.status === "recorded" ? "success" : "neutral"}>
-                    {log.status === "recorded" ? "Recorded" : "Not taken"}
-                  </StatusPill>
-                ) : (
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={() => markDose(med.id, dose.time, "recorded")}>
-                      <Check className="h-4 w-4" /> Record
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => markDose(med.id, dose.time, "skipped")}>
-                      <SkipForward className="h-4 w-4" /> Not taken
-                    </Button>
-                  </div>
-                )}
-              </li>
-            ))}
+                  {log ? (
+                    <StatusPill tone={log.status === "recorded" ? "success" : "neutral"}>
+                      {log.status === "recorded" ? "Recorded" : "Not taken"}
+                    </StatusPill>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={() => markDose(med.id, dose.time, "recorded")}>
+                        <Check className="h-4 w-4" /> Record
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => markDose(med.id, dose.time, "skipped")}
+                      >
+                        <SkipForward className="h-4 w-4" /> Not taken
+                      </Button>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </Panel>
 
       <Panel title="Current medications">
         {current.length === 0 ? (
-          <EmptyState title="No current medications" description="Anything you add appears here with its schedule." />
+          <EmptyState
+            title="No current medications"
+            description="Anything you add appears here with its schedule."
+          />
         ) : (
           <ul className="grid gap-3 md:grid-cols-2">
             {current.map((med) => (
@@ -356,7 +477,10 @@ function MedicationsPage() {
       </Panel>
 
       {past.length > 0 ? (
-        <Panel title="Past medications" action={<span className="text-sm text-muted-foreground">Kept for your history</span>}>
+        <Panel
+          title="Past medications"
+          action={<span className="text-sm text-muted-foreground">Kept for your history</span>}
+        >
           <ul className="grid gap-3 md:grid-cols-2">
             {past.map((med) => (
               <MedCard key={med.id} med={med} archived />
@@ -366,7 +490,8 @@ function MedicationsPage() {
       ) : null}
 
       <SafetyNote>
-        Vitavyn is a personal record, not a pharmacist. Always confirm dosage changes with your prescriber.
+        Vitavyn is a personal record, not a pharmacist. Always confirm dosage changes with your
+        prescriber.
       </SafetyNote>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -374,12 +499,19 @@ function MedicationsPage() {
           <DialogHeader>
             <DialogTitle>{editingId ? "Edit medication" : "Add medication"}</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label>Medication name</Label>
-              <div className="flex items-center gap-2">
-                <Pill className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+
+          <div className="space-y-4">
+            {/* Row 1 — name */}
+            <div className="space-y-1.5">
+              <Label htmlFor="med-name">Medication name</Label>
+              <div className="relative">
+                <FormIcon
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                  strokeWidth={1.75}
+                />
                 <Input
+                  id="med-name"
+                  className="pl-9"
                   value={form.name}
                   placeholder="e.g. Metformin"
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -390,148 +522,210 @@ function MedicationsPage() {
               ) : null}
             </div>
 
-            <div className="space-y-1.5">
-              <Label>Dose</Label>
-              <Input
-                value={form.dose}
-                placeholder="e.g. 5/1000"
-                onChange={(e) => setForm({ ...form, dose: e.target.value })}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Unit</Label>
-              <Select
-                value={form.unit}
-                onValueChange={(v) => setForm({ ...form, unit: v })}
-                disabled={unitOptions.length === 1}
-              >
-                <SelectTrigger aria-label="Unit">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {unitOptions.map((u) => (
-                    <SelectItem key={u} value={u}>
-                      {u}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {/* Row 2 — dose + unit */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="med-dose">Dose</Label>
+                <Input
+                  id="med-dose"
+                  value={form.dose}
+                  placeholder="e.g. 500 or 5/1000"
+                  onChange={(e) => setForm({ ...form, dose: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Unit</Label>
+                <Select
+                  value={form.unit}
+                  onValueChange={(v) => setForm({ ...form, unit: v })}
+                  disabled={unitOptions.length === 1}
+                >
+                  <SelectTrigger aria-label="Unit">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {unitOptions.map((u) => (
+                      <SelectItem key={u} value={u}>
+                        {u}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label>Form</Label>
-              <Select value={form.form} onValueChange={setFormKind}>
-                <SelectTrigger aria-label="Form">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {MED_FORMS.map((f) => (
-                    <SelectItem key={f.value} value={f.value}>
-                      <span className="flex items-center gap-2">
-                        <f.icon className="h-4 w-4" strokeWidth={1.75} />
+            {/* Row 3 — form + frequency */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Form</Label>
+                <Select value={form.form} onValueChange={setFormKind}>
+                  <SelectTrigger aria-label="Form">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MED_FORMS.map((f) => (
+                      <SelectItem key={f.value} value={f.value}>
+                        <span className="flex items-center gap-2">
+                          <f.icon className="h-4 w-4" strokeWidth={1.75} />
+                          {f.label}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Frequency</Label>
+                <Select value={form.frequency} onValueChange={setFrequency}>
+                  <SelectTrigger aria-label="Frequency">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FREQUENCIES.map((f) => (
+                      <SelectItem key={f.value} value={f.value}>
                         {f.label}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Frequency</Label>
-              <Select value={form.frequency} onValueChange={(v) => setForm({ ...form, frequency: v })}>
-                <SelectTrigger aria-label="Frequency">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {FREQUENCIES.map((f) => (
-                    <SelectItem key={f.value} value={f.value}>
-                      {f.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            <div className="space-y-1.5 sm:col-span-2">
+            {/* Conditional: specific days selector */}
+            {form.frequency === "specific_days" ? (
+              <div className="space-y-2">
+                <Label className="text-sm">Which days?</Label>
+                <div className="flex gap-1.5">
+                  {WEEKDAYS.map((day) => {
+                    const active = form.daysOfWeek.includes(day.value);
+                    return (
+                      <button
+                        key={day.value}
+                        type="button"
+                        aria-label={day.label}
+                        aria-pressed={active}
+                        onClick={() => toggleDay(day.value)}
+                        className={`h-9 flex-1 rounded-full border text-sm font-medium transition-colors ${
+                          active
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border text-muted-foreground hover:border-primary"
+                        }`}
+                      >
+                        {day.short}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
+            {/* Row 4 — related condition */}
+            <div className="space-y-1.5">
               <Label>Related condition</Label>
-              <Select value={form.conditionId} onValueChange={(v) => setForm({ ...form, conditionId: v })}>
+              <Select
+                value={form.conditionId}
+                onValueChange={(v) => setForm({ ...form, conditionId: v })}
+              >
                 <SelectTrigger aria-label="Related condition">
                   <SelectValue placeholder="None" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">None</SelectItem>
-                  {data.conditions.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
+                  {data.conditions
+                    .filter((c) => c.status !== "resolved")
+                    .map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="sm:col-span-2">
+            {/* Schedule — hidden entirely for PRN */}
+            {asNeeded ? (
+              <div className="space-y-1.5">
+                <Label htmlFor="med-max">Max doses per day (optional)</Label>
+                <Input
+                  id="med-max"
+                  type="number"
+                  min={1}
+                  inputMode="numeric"
+                  placeholder="e.g. 3"
+                  value={form.maxDosesPerDay}
+                  onChange={(e) => setForm({ ...form, maxDosesPerDay: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  As-needed medicines have no fixed schedule; record each dose when you take it.
+                </p>
+              </div>
+            ) : (
               <DoseScheduleField
                 schedule={form.schedule}
                 onChange={(next) => setForm({ ...form, schedule: next })}
               />
-            </div>
+            )}
 
-            <div className="sm:col-span-2">
-              <Accordion type="single" collapsible>
-                <AccordionItem value="more" className="border-b-0">
-                  <AccordionTrigger className="text-sm">More details</AccordionTrigger>
-                  <AccordionContent>
-                    <div className="grid gap-4 pt-1 sm:grid-cols-2">
-                      <div className="space-y-1.5 sm:col-span-2">
-                        <Label>Prescriber</Label>
-                        <Select
-                          value={form.prescriber}
-                          onValueChange={(v) => setForm({ ...form, prescriber: v })}
-                        >
-                          <SelectTrigger aria-label="Prescriber">
-                            <SelectValue placeholder="None" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">None</SelectItem>
-                            {data.providers.map((p) => (
-                              <SelectItem key={p.id} value={p.name}>
-                                {p.name} · {p.specialty}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>Start date</Label>
-                        <Input
-                          type="date"
-                          value={form.startDate}
-                          onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>End date</Label>
-                        <Input
-                          type="date"
-                          value={form.endDate}
-                          onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-1.5 sm:col-span-2">
-                        <Label>Notes</Label>
-                        <Textarea
-                          value={form.notes}
-                          onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                        />
-                      </div>
+            <Accordion type="single" collapsible>
+              <AccordionItem value="more" className="border-b-0">
+                <AccordionTrigger className="text-sm">More details</AccordionTrigger>
+                <AccordionContent>
+                  <div className="grid gap-4 pt-1 sm:grid-cols-2">
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <Label>Prescriber</Label>
+                      <Select
+                        value={form.prescriber}
+                        onValueChange={(v) => setForm({ ...form, prescriber: v })}
+                      >
+                        <SelectTrigger aria-label="Prescriber">
+                          <SelectValue placeholder="None" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
+                          {data.providers.map((p) => (
+                            <SelectItem key={p.id} value={p.name}>
+                              {p.name} · {p.specialty}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="med-start">Start date</Label>
+                      <Input
+                        id="med-start"
+                        type="date"
+                        value={form.startDate}
+                        onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="med-end">End date</Label>
+                      <Input
+                        id="med-end"
+                        type="date"
+                        value={form.endDate}
+                        onChange={(e) => setForm({ ...form, endDate: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <Label htmlFor="med-notes">Notes</Label>
+                      <Textarea
+                        id="med-notes"
+                        value={form.notes}
+                        onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </div>
+
           <DialogFooter>
-            <Button onClick={saveMedication}>{editingId ? "Save changes" : "Save medication"}</Button>
+            <Button onClick={saveMedication}>
+              {editingId ? "Save changes" : "Save medication"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -541,8 +735,8 @@ function MedicationsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Permanently delete this medication?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will erase all associated logs and history from your records. This action cannot be
-              undone.
+              This will erase all associated logs and history from your records. This action cannot
+              be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
