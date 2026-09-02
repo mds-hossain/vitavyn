@@ -63,13 +63,13 @@ function TodayPage() {
   const firstName = data.profile.name.split(" ")[0] ?? "";
   const reference = now ?? new Date();
 
-  const doses = todaysDoses(data, reference);
+  const doses = now ? todaysDoses(data, now) : [];
   const recorded = doses.filter((d) => d.status === "recorded").length;
   const pending = doses.filter((d) => d.status === "pending");
   const dueNow = pending.filter((d) => doseState(d, reference) === "due");
 
   const kinds = relevantKinds(data);
-  const staleKinds = kinds.filter((kind) => {
+  const staleKinds = !now ? [] : kinds.filter((kind) => {
     const latest = measurementsOfKind(data, kind)[0];
     return !latest || !isSameDay(new Date(latest.takenAt), reference);
   });
