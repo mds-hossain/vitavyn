@@ -208,47 +208,90 @@ function TodayPage() {
             {doses.map((dose) => {
               const state = doseState(dose, reference);
               const Icon = medFormIcon(dose.form);
+              const notTaken = state === "not-taken";
+
+              const timeBlock = (
+                <div className="min-w-0">
+                  <p className="metric-value text-sm">
+                    {formatTimeOfDay(dose.time, twelveHour)}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {mealContextLabel(dose.mealContext)}
+                  </p>
+                </div>
+              );
+
+              const actions = notTaken ? (
+                <button
+                  type="button"
+                  onClick={() => undoDose(dose.logId)}
+                  aria-label="Undo not taken"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+                >
+                  <Ban className="h-3.5 w-3.5" strokeWidth={1.75} /> Not taken
+                </button>
+              ) : state === "recorded" ? (
+                <StatusPill tone="success">
+                  <CheckCircle2 className="h-3.5 w-3.5" /> Recorded
+                </StatusPill>
+              ) : (
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <Button size="sm" onClick={() => markDose(dose, "recorded")}>
+                    Record dose
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label={`Mark ${dose.name} not taken`}
+                    title="Mark not taken"
+                    onClick={() => markDose(dose, "skipped")}
+                  >
+                    <Ban className="h-4 w-4" strokeWidth={1.75} />
+                  </Button>
+                </div>
+              );
+
+              const nameBlock = (
+                <p className="flex min-w-0 items-center gap-2 text-sm font-medium">
+                  <Icon className="h-4 w-4 shrink-0 text-primary" strokeWidth={1.75} />
+                  <span className="truncate">
+                    {dose.name} {dose.dose} {dose.unit}
+                  </span>
+                </p>
+              );
+
+              const conditionChip = dose.conditionName ? (
+                <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                  {dose.conditionName}
+                </span>
+              ) : null;
+
               return (
                 <li
                   key={dose.medicationId + dose.time}
-                  className="rounded-xl border border-border px-4 py-3"
+                  className={`rounded-xl border border-border px-4 py-3 transition-opacity ${
+                    notTaken ? "opacity-50" : ""
+                  }`}
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="metric-value text-sm text-muted-foreground">{dose.time}</span>
-                    {state === "recorded" ? (
-                      <StatusPill tone="success">
-                        <CheckCircle2 className="h-3.5 w-3.5" /> Recorded
-                      </StatusPill>
-                    ) : state === "not-taken" ? (
-                      <StatusPill tone="warning">
-                        <AlertCircle className="h-3.5 w-3.5" /> Not taken
-                      </StatusPill>
-                    ) : state === "due" ? (
-                      <Button
-                        size="sm"
-                        onClick={() => recordDose(dose.medicationId, dose.scheduled)}
-                      >
-                        Record dose
-                      </Button>
-                    ) : (
-                      <StatusPill>
-                        <Clock className="h-3.5 w-3.5" /> In{" "}
-                        {formatDistanceToNowStrict(dose.scheduled)}
-                      </StatusPill>
-                    )}
+                  {/* Mobile: compact stack */}
+                  <div className="sm:hidden">
+                    <div className="flex items-start justify-between gap-3">
+                      {timeBlock}
+                      {actions}
+                    </div>
+                    <div className="mt-1.5">{nameBlock}</div>
+                    {conditionChip ? <div className="mt-2">{conditionChip}</div> : null}
                   </div>
-                  <p className="mt-1.5 flex min-w-0 items-center gap-2 text-sm font-medium">
-                    <Icon className="h-4 w-4 shrink-0 text-primary" strokeWidth={1.75} />
-                    <span className="truncate">
-                      {dose.name} {dose.dose}
-                      {dose.unit}
-                    </span>
-                  </p>
-                  {dose.conditionName ? (
-                    <span className="mt-2 inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                      {dose.conditionName}
-                    </span>
-                  ) : null}
+
+                  {/* Web: three columns */}
+                  <div className="hidden items-center gap-4 sm:flex">
+                    <div className="w-24 shrink-0">{timeBlock}</div>
+                    <div className="min-w-0 flex-1">
+                      {nameBlock}
+                      {conditionChip ? <div className="mt-1.5">{conditionChip}</div> : null}
+                    </div>
+                    {actions}
+                  </div>
                 </li>
               );
             })}
