@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/vitavyn/DatePicker";
 import { Switch } from "@/components/ui/switch";
 import {
   AlertDialog,
@@ -80,10 +81,10 @@ function SettingsPage() {
           </div>
           <div className="space-y-1.5">
             <Label>Date of birth</Label>
-            <Input
-              type="date"
+            <DatePicker
+              label="Date of birth"
               value={profile.dateOfBirth ?? ""}
-              onChange={(e) => setProfile({ dateOfBirth: e.target.value })}
+              onChange={(v) => setProfile({ dateOfBirth: v })}
             />
           </div>
           <div className="space-y-1.5">
