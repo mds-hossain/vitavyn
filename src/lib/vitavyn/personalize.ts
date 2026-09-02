@@ -57,20 +57,49 @@ export type Dose = {
   name: string;
   dose: string;
   unit: string;
+  form: string;
+  slot: SlotId;
+  mealContext?: string | undefined;
+  conditionName?: string | undefined;
   time: string;
   scheduled: Date;
   status: "recorded" | "skipped" | "pending";
 };
 
+/** Whether a medication's frequency rule puts it on the calendar for `now`. */
+export function isScheduledToday(med: VitavynData["medications"][number], now: Date): boolean {
+  if (med.frequency === "as_needed") return false;
+  if (med.frequency === "specific_days") {
+    const days = med.daysOfWeek ?? [];
+    return days.length === 0 || days.includes(now.getDay());
+  }
+  if (med.frequency === "every_other_day") {
+    const start = med.startDate ? new Date(med.startDate) : new Date(med.createdAt);
+    if (Number.isNaN(start.getTime())) return true;
+    const day = 86400000;
+    const a = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
+    const b = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+    return Math.abs(Math.round((b - a) / day)) % 2 === 0;
+  }
+  return true;
+}
+
 /** Today's dose schedule with resolved status, shared by dashboard and medications page. */
 export function todaysDoses(data: VitavynData, now = new Date()): Dose[] {
   const todayKey = now.toDateString();
   return data.medications
-    .filter((med) => !isPastMedication(med, now))
+    .filter((med) => !isPastMedication(med, now) && isScheduledToday(med, now))
     .flatMap((med) => {
-      const times = med.schedule?.length ? med.schedule.map((s) => s.time) : med.times;
-      return times.map((time) => {
-        const [h, m] = time.split(":");
+      const slots: { time: string; slot: SlotId; mealContext?: string }[] = med.schedule?.length
+        ? med.schedule.map((s) => ({
+            time: s.time,
+            slot: s.slot,
+            ...(s.mealContext ? { mealContext: s.mealContext } : {}),
+          }))
+        : (med.times ?? []).map((time) => ({ time, slot: slotForTime(time) }));
+      const conditionName = data.conditions.find((c) => med.conditionIds?.includes(c.id))?.name;
+      return slots.map((entry) => {
+        const [h, m] = entry.time.split(":");
         const scheduled = new Date(now);
         scheduled.setHours(Number(h), Number(m ?? 0), 0, 0);
         const log = data.medicationLogs.find(
@@ -84,7 +113,11 @@ export function todaysDoses(data: VitavynData, now = new Date()): Dose[] {
           name: med.name,
           dose: med.dose,
           unit: med.unit,
-          time,
+          form: med.form,
+          slot: entry.slot,
+          mealContext: entry.mealContext,
+          conditionName,
+          time: entry.time,
           scheduled,
           status: (log?.status ?? "pending") as Dose["status"],
         };
