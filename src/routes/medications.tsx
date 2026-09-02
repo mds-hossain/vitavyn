@@ -693,23 +693,23 @@ function MedicationsPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="med-start">Start date</Label>
-                      <Input
-                        id="med-start"
-                        type="date"
-                        value={form.startDate}
-                        onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="med-end">End date</Label>
-                      <Input
-                        id="med-end"
-                        type="date"
-                        value={form.endDate}
-                        onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                      />
+                    <div className="grid grid-cols-2 gap-4 sm:col-span-2">
+                      <div className="space-y-1.5">
+                        <Label>Start date</Label>
+                        <DatePicker
+                          label="Start date"
+                          value={form.startDate}
+                          onChange={(v) => setForm({ ...form, startDate: v })}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>End date</Label>
+                        <DatePicker
+                          label="End date"
+                          value={form.endDate}
+                          onChange={(v) => setForm({ ...form, endDate: v })}
+                        />
+                      </div>
                     </div>
                     <div className="space-y-1.5 sm:col-span-2">
                       <Label htmlFor="med-notes">Notes</Label>
