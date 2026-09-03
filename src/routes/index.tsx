@@ -242,14 +242,26 @@ function TodayPage() {
                   <Ban className="h-3.5 w-3.5" strokeWidth={1.75} /> Not taken
                 </button>
               ) : state === "recorded" ? (
-                <StatusPill tone="success">
-                  <CheckCircle2 className="h-3.5 w-3.5" /> Recorded
-                </StatusPill>
+                <button
+                  type="button"
+                  onClick={() => undoDose(dose.logId)}
+                  aria-label={`${dose.name} recorded — tap to undo`}
+                  title="Recorded — tap to undo"
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-success transition-transform active:scale-95"
+                >
+                  <Check className="h-6 w-6" strokeWidth={2.5} />
+                </button>
               ) : (
                 <div className="flex shrink-0 items-center gap-1.5">
-                  <Button size="sm" onClick={() => markDose(dose, "recorded")}>
-                    Record dose
-                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => markDose(dose, "recorded")}
+                    aria-label={`Record ${dose.name}`}
+                    title="Record dose"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-success hover:text-success active:scale-95"
+                  >
+                    <Check className="h-5 w-5" strokeWidth={2.5} />
+                  </button>
                   <Button
                     size="icon"
                     variant="ghost"
