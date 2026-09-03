@@ -185,6 +185,7 @@ export type VitavynData = {
   records: MedicalRecord[];
   meals: Meal[];
   tasks: HealthTask[];
+  customMetrics: CustomMetric[];
 };
 
 export type TimelineEvent = {
