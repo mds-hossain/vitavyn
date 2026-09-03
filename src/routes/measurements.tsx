@@ -23,6 +23,8 @@ import {
 import { EmptyState, PageHeader, Panel } from "@/components/vitavyn/primitives";
 import { kindForMetric } from "@/lib/vitavyn/conditionSeed";
 import { MeasurementChart } from "@/components/vitavyn/MeasurementChart";
+import { DatePicker } from "@/components/vitavyn/DatePicker";
+import { TimePicker } from "@/components/vitavyn/TimePicker";
 import { UnitValueInput } from "@/components/vitavyn/UnitValueInput";
 import { useVitavyn } from "@/lib/vitavyn/store";
 import type { Measurement } from "@/lib/vitavyn/types";
@@ -70,12 +72,13 @@ function MeasurementsPage() {
   const { condition: initialCondition } = Route.useSearch();
   const prefs = data.preferences;
   const [conditionId, setConditionId] = useState(initialCondition || "all");
-  const [kind, setKind] = useState("glucose");
   const [addOpen, setAddOpen] = useState(false);
   const [logValue, setLogValue] = useState("");
   const [logSecondary, setLogSecondary] = useState("");
   const [logUnit, setLogUnit] = useState("");
   const [logLabel, setLogLabel] = useState("");
+  const [logDate, setLogDate] = useState("");
+  const [logTime, setLogTime] = useState("");
   const [editing, setEditing] = useState<Measurement | null>(null);
   const [editValue, setEditValue] = useState("");
   const [editSecondary, setEditSecondary] = useState("");
@@ -88,40 +91,52 @@ function MeasurementsPage() {
   const activeCondition =
     conditionId === "all" ? undefined : data.conditions.find((c) => c.id === conditionId);
 
-  /** Kind chips follow the selected condition's tracked metrics. */
-  const visibleKinds = useMemo(() => {
-    if (!activeCondition) return KINDS;
-    const allowed = new Set(
-      activeCondition.trackedMetrics
-        .map((metric) => kindForMetric(metric))
-        .filter((k): k is string => !!k),
-    );
-    if (activeCondition.trackedMetrics.some((metric) => !kindForMetric(metric))) allowed.add("custom");
-    const list = KINDS.filter((k) => allowed.has(k.id));
-    return list.length > 0 ? list : KINDS;
+  /** Chips follow the selected condition's tracked metrics (built-in or custom). */
+  const chips = useMemo(() => {
+    if (!activeCondition) return KINDS.map((k) => ({ id: k.id, label: k.label, kind: k.id, metric: "" }));
+    const list = activeCondition.trackedMetrics.map((metric) => {
+      const builtin = kindForMetric(metric);
+      return builtin
+        ? { id: builtin, label: KINDS.find((k) => k.id === builtin)?.label ?? metric, kind: builtin, metric: "" }
+        : { id: `custom:${metric}`, label: metric, kind: "custom", metric };
+    });
+    const seen = new Set<string>();
+    const unique = list.filter((c) => (seen.has(c.id) ? false : (seen.add(c.id), true)));
+    return unique.length > 0
+      ? unique
+      : KINDS.map((k) => ({ id: k.id, label: k.label, kind: k.id, metric: "" }));
   }, [activeCondition]);
 
+  const [chipId, setChipId] = useState(chips[0]?.id ?? "glucose");
+  const activeChip = chips.find((c) => c.id === chipId) ?? chips[0]!;
+  const kind = activeChip.kind;
+
   useEffect(() => {
-    if (!visibleKinds.some((k) => k.id === kind)) setKind(visibleKinds[0]?.id ?? "glucose");
-  }, [visibleKinds, kind]);
+    if (!chips.some((c) => c.id === chipId)) setChipId(chips[0]?.id ?? "glucose");
+  }, [chips, chipId]);
 
   const rows = data.measurements
     .filter((m) => m.kind === kind)
+    .filter((m) => !activeChip.metric || m.label === activeChip.metric)
     .filter((m) => !activeCondition || !m.conditionId || m.conditionId === activeCondition.id)
     .sort((a, b) => new Date(b.takenAt).getTime() - new Date(a.takenAt).getTime());
 
-  const activeKindLabel = KINDS.find((k) => k.id === kind)?.label ?? "Measurement";
+  const activeKindLabel = activeChip.label;
 
   const openLog = () => {
     setLogValue("");
     setLogSecondary("");
-    setLogLabel("");
+    setLogLabel(activeChip.metric);
+    const now = new Date();
+    setLogDate(format(now, "yyyy-MM-dd"));
+    setLogTime(format(now, "HH:mm"));
     setLogUnit(preferredUnit(kind, prefs, canonicalUnit(kind)));
     setAddOpen(true);
   };
 
   const saveLog = () => {
     const label = kind === "custom" ? logLabel.trim() : activeKindLabel;
+    const takenAt = new Date(`${logDate || format(new Date(), "yyyy-MM-dd")}T${logTime || "00:00"}:00`).toISOString();
     if (kind === "custom" && !label) {
       toast.error("Name this measurement");
       return;
@@ -139,7 +154,7 @@ function MeasurementsPage() {
         value: sys,
         secondaryValue: dia,
         unit: "mmHg",
-        takenAt: new Date().toISOString(),
+        takenAt,
         conditionId: activeCondition?.id ?? null,
       } as never);
     } else {
@@ -153,7 +168,7 @@ function MeasurementsPage() {
         label,
         value: round(toCanonicalValue(kind, logUnit, raw), 2),
         unit: canonicalUnit(kind) || logUnit,
-        takenAt: new Date().toISOString(),
+        takenAt,
         conditionId: activeCondition?.id ?? null,
       } as never);
     }
@@ -231,15 +246,15 @@ function MeasurementsPage() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {visibleKinds.map((k) => (
+        {chips.map((c) => (
           <button
-            key={k.id}
-            onClick={() => setKind(k.id)}
+            key={c.id}
+            onClick={() => setChipId(c.id)}
             className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
-              kind === k.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+              chipId === c.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
             }`}
           >
-            {k.label}
+            {c.label}
           </button>
         ))}
       </div>
@@ -288,7 +303,7 @@ function MeasurementsPage() {
             <DialogTitle>Log {activeKindLabel.toLowerCase()}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            {kind === "custom" ? (
+            {kind === "custom" && !activeChip.metric ? (
               <div className="space-y-1.5">
                 <Label>Measurement name</Label>
                 <Input
@@ -324,6 +339,10 @@ function MeasurementsPage() {
                 onUnitChange={setLogUnit}
               />
             )}
+            <div className="grid grid-cols-2 gap-3">
+              <DatePicker label="Date" value={logDate} onChange={setLogDate} />
+              <TimePicker label="Time" value={logTime} onChange={setLogTime} />
+            </div>
             {activeCondition ? (
               <p className="text-xs text-muted-foreground">
                 Linked to {activeCondition.name}.
