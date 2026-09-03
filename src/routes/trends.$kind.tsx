@@ -31,6 +31,9 @@ export const Route = createFileRoute("/trends/$kind")({
       { property: "og:description", content: "Averages, ranges and recent readings from your own records." },
     ],
   }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    condition: typeof search["condition"] === "string" ? (search["condition"] as string) : "",
+  }),
   component: TrendPage,
 });
 
@@ -43,11 +46,13 @@ const RANGES = [
 
 function TrendPage() {
   const { kind } = Route.useParams();
+  const { condition: conditionId } = Route.useSearch();
   const { data } = useVitavyn();
   const [range, setRange] = useState("30");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
 
+  const backCondition = conditionId ? data.conditions.find((c) => c.id === conditionId) : undefined;
   const label = KIND_LABELS[kind] ?? kind;
   const all = measurementsOfKind(data, kind);
 
@@ -80,9 +85,15 @@ function TrendPage() {
     <div className="space-y-5">
       <div>
         <Button asChild variant="ghost" size="sm" className="-ml-2">
-          <Link to="/measurements">
-            <ArrowLeft className="h-4 w-4" /> Measurements
-          </Link>
+          {backCondition ? (
+            <Link to="/conditions/$conditionId" params={{ conditionId: backCondition.id }}>
+              <ArrowLeft className="h-4 w-4" /> {backCondition.name}
+            </Link>
+          ) : (
+            <Link to="/measurements">
+              <ArrowLeft className="h-4 w-4" /> Measurements
+            </Link>
+          )}
         </Button>
         <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">{label} trend</h1>
         <p className="mt-1 text-sm text-muted-foreground">Based on the readings you have recorded.</p>

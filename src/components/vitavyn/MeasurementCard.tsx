@@ -27,10 +27,13 @@ export function MeasurementCard({
   kind,
   measurements,
   prefs,
+  conditionId,
 }: {
   kind: string;
   measurements: Measurement[]; // newest first, same kind
   prefs: UnitPrefs;
+  /** When set, the trend view keeps a back link to this condition. */
+  conditionId?: string;
 }) {
   const latest = measurements[0];
   if (!latest) return null;
@@ -45,6 +48,7 @@ export function MeasurementCard({
     <Link
       to="/trends/$kind"
       params={{ kind }}
+      search={{ condition: conditionId ?? "" }}
       aria-label={`View ${KIND_LABELS[kind] ?? kind} trend`}
       className="group flex flex-col rounded-xl border border-border bg-background/60 p-4 transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]"
     >

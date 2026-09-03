@@ -129,6 +129,7 @@ function ConditionDetail() {
                   const week = series.filter((m) => new Date(m.takenAt).getTime() >= weekAgo);
                   return (
                     <MeasurementCard
+                      conditionId={condition.id}
                       key={kind}
                       kind={kind}
                       measurements={week.length > 0 ? week : series.slice(0, 7)}
