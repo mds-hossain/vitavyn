@@ -5,6 +5,7 @@ import { Line, LineChart, ResponsiveContainer } from "recharts";
 import { KIND_LABELS } from "@/lib/vitavyn/personalize";
 import type { Measurement } from "@/lib/vitavyn/types";
 import { formatMeasurement, type UnitPrefs } from "@/lib/vitavyn/units";
+import { useVitavyn } from "@/lib/vitavyn/store";
 
 export function measurementDisplay(m: Measurement, prefs: UnitPrefs) {
   if (m.kind === "blood_pressure") {
@@ -35,6 +36,7 @@ export function MeasurementCard({
   /** When set, the trend view keeps a back link to this condition. */
   conditionId?: string;
 }) {
+  const { hydrated } = useVitavyn();
   const latest = measurements[0];
   if (!latest) return null;
 
@@ -72,7 +74,7 @@ export function MeasurementCard({
       ) : null}
       <p className="mt-3 text-xs text-muted-foreground">
         {latest.context ? `${latest.context} · ` : ""}
-        {format(new Date(latest.takenAt), "MMM d, HH:mm")}
+        {hydrated ? format(new Date(latest.takenAt), "MMM d, HH:mm") : ""}
       </p>
       <span className="mt-2 text-xs font-medium text-primary">View trend</span>
     </Link>
