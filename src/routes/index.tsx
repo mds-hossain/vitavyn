@@ -4,6 +4,7 @@ import { format, formatDistanceToNowStrict, isSameDay, isTomorrow } from "date-f
 import {
   Ban,
   CalendarDays,
+  Check,
   CheckCircle2,
   ChevronRight,
   Clock,
@@ -11,7 +12,7 @@ import {
   Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Panel, SafetyNote, StatusPill } from "@/components/vitavyn/primitives";
+import { Panel, SafetyNote } from "@/components/vitavyn/primitives";
 import { MeasurementCard } from "@/components/vitavyn/MeasurementCard";
 import { QuickAdd } from "@/components/vitavyn/QuickAdd";
 import { buildTimeline, useVitavyn } from "@/lib/vitavyn/store";
@@ -179,7 +180,7 @@ function TodayPage() {
           <div className="rounded-xl border border-border px-4 py-3 text-sm">
             <span className="font-medium">Next appointment</span>
             <p className="mt-1 text-muted-foreground">
-              {nextAppointment
+              {now && nextAppointment
                 ? `${nextAppointment.providerName} · ${format(new Date(nextAppointment.startsAt), "MMM d, HH:mm")}`
                 : "Nothing scheduled"}
             </p>
@@ -228,7 +229,11 @@ function TodayPage() {
                 </div>
               );
 
-              const actions = notTaken ? (
+              const actions = state === "upcoming" ? (
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  in {formatDistanceToNowStrict(dose.scheduled)}
+                </span>
+              ) : notTaken ? (
                 <button
                   type="button"
                   onClick={() => undoDose(dose.logId)}
@@ -238,14 +243,26 @@ function TodayPage() {
                   <Ban className="h-3.5 w-3.5" strokeWidth={1.75} /> Not taken
                 </button>
               ) : state === "recorded" ? (
-                <StatusPill tone="success">
-                  <CheckCircle2 className="h-3.5 w-3.5" /> Recorded
-                </StatusPill>
+                <button
+                  type="button"
+                  onClick={() => undoDose(dose.logId)}
+                  aria-label={`${dose.name} recorded — tap to undo`}
+                  title="Recorded — tap to undo"
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-success transition-transform active:scale-95"
+                >
+                  <Check className="h-6 w-6" strokeWidth={2.5} />
+                </button>
               ) : (
                 <div className="flex shrink-0 items-center gap-1.5">
-                  <Button size="sm" onClick={() => markDose(dose, "recorded")}>
-                    Record dose
-                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => markDose(dose, "recorded")}
+                    aria-label={`Record ${dose.name}`}
+                    title="Record dose"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-success hover:text-success active:scale-95"
+                  >
+                    <Check className="h-5 w-5" strokeWidth={2.5} />
+                  </button>
                   <Button
                     size="icon"
                     variant="ghost"
