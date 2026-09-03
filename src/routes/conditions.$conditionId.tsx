@@ -120,7 +120,7 @@ function ConditionDetail() {
           action={
             <Link
               to="/measurements"
-              search={{ condition: condition.id }}
+              search={{ condition: condition.id, metric: "" }}
               className="text-sm font-medium text-primary hover:underline"
             >
               Open in Measurements →
@@ -151,14 +151,22 @@ function ConditionDetail() {
               </div>
               {untrackedMetrics.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5">
-                  {untrackedMetrics.map((metric) => (
-                    <span
-                      key={metric}
-                      className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground"
-                    >
-                      {metric} · no readings yet
-                    </span>
-                  ))}
+                  {untrackedMetrics.map((metric) => {
+                    const latest = data.measurements
+                      .filter((m) => m.kind === "custom" && m.label === metric)
+                      .filter((m) => !m.conditionId || m.conditionId === condition.id)
+                      .sort((a, b) => new Date(b.takenAt).getTime() - new Date(a.takenAt).getTime())[0];
+                    return (
+                      <Link
+                        key={metric}
+                        to="/measurements"
+                        search={{ condition: condition.id, metric }}
+                        className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                      >
+                        {metric} · {latest ? `${latest.value} ${latest.unit}`.trim() : "add reading"}
+                      </Link>
+                    );
+                  })}
                 </div>
               ) : null}
             </div>

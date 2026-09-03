@@ -90,7 +90,7 @@ function TrendPage() {
               <ArrowLeft className="h-4 w-4" /> {backCondition.name}
             </Link>
           ) : (
-            <Link to="/measurements" search={{ condition: "" }}>
+            <Link to="/measurements" search={{ condition: "", metric: "" }}>
               <ArrowLeft className="h-4 w-4" /> Measurements
             </Link>
           )}
