@@ -254,21 +254,23 @@ function TodayPage() {
                 </button>
               ) : (
                 <div className="flex shrink-0 items-center gap-1.5">
-                  <button
-                    type="button"
+                  <Button
+                    size="icon"
+                    variant="ghost"
                     onClick={() => markDose(dose, "recorded")}
                     aria-label={`Record ${dose.name}`}
                     title="Record dose"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-success hover:text-success active:scale-95"
+                    className="rounded-full border border-border text-muted-foreground hover:border-success hover:text-success active:scale-95"
                   >
                     <Check className="h-3 w-3" strokeWidth={1.75} />
-                  </button>
+                  </Button>
                   <Button
                     size="icon"
                     variant="ghost"
                     aria-label={`Mark ${dose.name} not taken`}
                     title="Mark not taken"
                     onClick={() => markDose(dose, "skipped")}
+                    className="rounded-full border border-border text-muted-foreground active:scale-95"
                   >
                     <Ban className="h-3 w-3" strokeWidth={1.75} />
                   </Button>
