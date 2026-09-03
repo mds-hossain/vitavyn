@@ -57,7 +57,10 @@ function ConditionDetail() {
   );
   const appointments = data.appointments
     .filter((a) => a.status === "upcoming")
-    .filter((a) => !a.purpose || true)
+    .filter((a) => {
+      const haystack = `${a.title} ${a.purpose ?? ""} ${a.specialty}`.toLowerCase();
+      return haystack.includes(condition.name.toLowerCase());
+    })
     .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
 
   // Section 3 — history tagged to this condition.
