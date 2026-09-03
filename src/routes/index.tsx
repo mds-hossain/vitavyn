@@ -261,7 +261,7 @@ function TodayPage() {
                     title="Record dose"
                     className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-success hover:text-success active:scale-95"
                   >
-                    <Check className="h-5 w-5" strokeWidth={2.5} />
+                    <Check className="h-4 w-4" strokeWidth={2} />
                   </button>
                   <Button
                     size="icon"
