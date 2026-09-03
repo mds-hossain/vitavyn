@@ -307,7 +307,6 @@ function MedicationsPage() {
   };
 
   const twelveHour = data.preferences.timeFormat === "12h";
-  const takenCount = todaysLogs.filter((l) => l.status === "recorded").length;
   const generic = genericFor(form.name);
   const unitOptions = unitsForForm(form.form);
   const FormIcon = findMedForm(form.form).icon;
