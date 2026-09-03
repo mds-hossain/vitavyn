@@ -248,9 +248,9 @@ function TodayPage() {
                   onClick={() => undoDose(dose.logId)}
                   aria-label={`${dose.name} recorded — tap to undo`}
                   title="Recorded — tap to undo"
-                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-success transition-transform active:scale-95"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-success/40 bg-success/10 px-3 py-1 text-xs font-medium text-success transition-colors hover:border-success hover:bg-success/20"
                 >
-                  <Check className="h-3 w-3" strokeWidth={1.75} />
+                  <Check className="h-3.5 w-3.5" strokeWidth={1.75} /> Taken
                 </button>
               ) : (
                 <div className="flex shrink-0 items-center gap-1.5">
