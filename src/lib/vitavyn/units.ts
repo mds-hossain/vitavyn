@@ -129,7 +129,10 @@ export function preferredUnit(kind: string, prefs: UnitPrefs, storedUnit: string
   if (kind === "glucose") return prefs.glucoseUnit;
   if (kind === "weight") return prefs.weightUnit;
   if (kind === "temperature") return prefs.tempUnit;
-  return storedUnit || canonicalUnit(kind);
+  // Concentration-style metrics (cholesterol, etc.) follow the mg/dL vs mmol/L preference.
+  if (findUnit(kind, prefs.glucoseUnit)) return prefs.glucoseUnit;
+  if (storedUnit && findUnit(kind, storedUnit)) return storedUnit;
+  return canonicalUnit(kind) || storedUnit;
 }
 
 /** Format a stored (canonical) measurement for display in the user's preferred unit. */
