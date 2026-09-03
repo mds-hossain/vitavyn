@@ -316,5 +316,6 @@ export function buildDemoData(): VitavynData {
       { ...stamp("task-1"), title: "Order Metformin refill", dueDate: at(3, 9), done: false },
       { ...stamp("task-2"), title: "Bring last lab report to review", dueDate: at(1, 9), done: false },
     ],
+    customMetrics: [],
   };
 }
