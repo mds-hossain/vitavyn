@@ -1,20 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { format } from "date-fns";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { EmptyState, PageHeader, Panel, StatusPill } from "@/components/vitavyn/primitives";
-import { EditRecordDialog } from "@/components/vitavyn/EditRecordDialog";
+import {
+  ConditionFormDialog,
+  type ConditionFormValues,
+} from "@/components/vitavyn/ConditionFormDialog";
 import { useVitavyn } from "@/lib/vitavyn/store";
 import type { Condition } from "@/lib/vitavyn/types";
 
@@ -36,29 +30,39 @@ export const Route = createFileRoute("/conditions")({
 
 function ConditionsPage() {
   const { data, add, updateItem } = useVitavyn();
-  const [open, setOpen] = useState(false);
+  const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Condition | null>(null);
-  const [name, setName] = useState("");
-  const [metrics, setMetrics] = useState("");
 
-  const save = () => {
-    if (!name.trim()) {
+  const save = (values: ConditionFormValues) => {
+    if (!values.name.trim()) {
       toast.error("Give the condition a name");
       return;
     }
-    add("conditions", {
-      name: name.trim(),
-      status: "active",
-      trackedMetrics: metrics
-        .split(",")
-        .map((m) => m.trim())
-        .filter(Boolean),
-    } as never);
-    setName("");
-    setMetrics("");
-    setOpen(false);
-    toast.success("Condition added");
+    const payload = {
+      name: values.name.trim(),
+      status: values.status,
+      diagnosedOn: values.diagnosedOn || undefined,
+      trackedMetrics: values.trackedMetrics,
+      notes: values.notes,
+    };
+    if (editing) {
+      updateItem("conditions", editing.id, payload as never);
+      setEditing(null);
+      toast.success("Condition updated");
+    } else {
+      add("conditions", payload as never);
+      setAdding(false);
+      toast.success("Condition added");
+    }
   };
+
+  const formValues = (c: Condition | null): ConditionFormValues => ({
+    name: c?.name ?? "",
+    status: c?.status ?? "active",
+    diagnosedOn: c?.diagnosedOn ? c.diagnosedOn.slice(0, 10) : "",
+    trackedMetrics: c?.trackedMetrics ?? [],
+    notes: c?.notes ?? "",
+  });
 
   return (
     <div>
@@ -66,35 +70,9 @@ function ConditionsPage() {
         title="Conditions"
         description="Conditions are the foundation of Vitavyn. Add any condition — the app is not limited to a fixed list."
         actions={
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4" /> Add condition
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add condition</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label>Condition name</Label>
-                  <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Thyroid" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Tracked metrics (comma separated)</Label>
-                  <Input
-                    value={metrics}
-                    onChange={(e) => setMetrics(e.target.value)}
-                    placeholder="TSH, T3, T4"
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button onClick={save}>Save condition</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <Button onClick={() => setAdding(true)}>
+            <Plus className="h-4 w-4" strokeWidth={1.75} /> Add condition
+          </Button>
         }
       />
 
@@ -114,11 +92,21 @@ function ConditionsPage() {
                     {condition.status}
                   </StatusPill>
                 </div>
-                <ul className="mt-4 space-y-1 text-sm text-muted-foreground">
+                {condition.diagnosedOn ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Diagnosed {format(new Date(condition.diagnosedOn), "dd/MM/yyyy")}
+                  </p>
+                ) : null}
+                <div className="mt-4 flex flex-wrap gap-1.5">
                   {condition.trackedMetrics.map((metric) => (
-                    <li key={metric}>{metric}</li>
+                    <span
+                      key={metric}
+                      className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground"
+                    >
+                      {metric}
+                    </span>
                   ))}
-                </ul>
+                </div>
               </div>
               <div className="mt-5 flex items-center justify-between">
                 <Button asChild variant="ghost" className="justify-start px-0">
@@ -140,39 +128,19 @@ function ConditionsPage() {
         </div>
       )}
 
-      <EditRecordDialog
-        title="Edit condition"
-        open={!!editing}
-        onOpenChange={(next) => (next ? null : setEditing(null))}
-        fields={[
-          { key: "name", label: "Condition name", full: true },
-          { key: "status", label: "Status", type: "select", options: ["active", "monitoring", "resolved"] },
-          { key: "diagnosedOn", label: "Diagnosed on", type: "date" },
-          { key: "trackedMetrics", label: "Tracked metrics (comma separated)", full: true },
-          { key: "notes", label: "Notes", type: "textarea" },
-        ]}
-        values={{
-          name: editing?.name ?? "",
-          status: editing?.status ?? "active",
-          diagnosedOn: editing?.diagnosedOn ? editing.diagnosedOn.slice(0, 10) : "",
-          trackedMetrics: editing?.trackedMetrics.join(", ") ?? "",
-          notes: editing?.notes ?? "",
+      <ConditionFormDialog
+        mode={editing ? "edit" : "add"}
+        open={adding || !!editing}
+        onOpenChange={(next) => {
+          if (!next) {
+            setAdding(false);
+            setEditing(null);
+          }
         }}
-        onSave={(next) => {
-          if (!editing) return;
-          updateItem("conditions", editing.id, {
-            name: next["name"] ?? editing.name,
-            status: (next["status"] ?? editing.status) as typeof editing.status,
-            diagnosedOn: next["diagnosedOn"] || undefined,
-            trackedMetrics: (next["trackedMetrics"] ?? "")
-              .split(",")
-              .map((m) => m.trim())
-              .filter(Boolean),
-            notes: next["notes"] ?? "",
-          } as never);
-          setEditing(null);
-          toast.success("Condition updated");
-        }}
+        initial={formValues(editing)}
+        customMetrics={data.customMetrics ?? []}
+        onCreateCustomMetric={(metric) => add("customMetrics", metric as never)}
+        onSave={save}
       />
     </div>
   );
