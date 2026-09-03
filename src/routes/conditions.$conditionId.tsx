@@ -115,7 +115,18 @@ function ConditionDetail() {
       />
 
       <div className="space-y-6">
-        <Panel title="Key metrics">
+        <Panel
+          title="Key metrics"
+          action={
+            <Link
+              to="/measurements"
+              search={{ condition: condition.id }}
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              Open in Measurements →
+            </Link>
+          }
+        >
           {trackedKinds.length === 0 && untrackedMetrics.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No metrics linked yet. Edit this condition to add tracked metrics.
