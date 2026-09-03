@@ -116,7 +116,7 @@ function MeasurementsPage() {
     setLogValue("");
     setLogSecondary("");
     setLogLabel("");
-    setLogUnit(preferredUnit(kind, prefs));
+    setLogUnit(preferredUnit(kind, prefs, canonicalUnit(kind)));
     setAddOpen(true);
   };
 
