@@ -1,6 +1,9 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { useState } from "react";
 import { format } from "date-fns";
-import { CalendarDays, FlaskConical, Pill, StickyNote } from "lucide-react";
+import { Activity, CalendarDays, FlaskConical, Pill, Plus, StickyNote } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { SymptomFormDialog } from "@/components/vitavyn/SymptomFormDialog";
 import { PageHeader, Panel, SafetyNote, StatusPill } from "@/components/vitavyn/primitives";
 import { MeasurementCard } from "@/components/vitavyn/MeasurementCard";
 import { useVitavyn } from "@/lib/vitavyn/store";
@@ -29,6 +32,7 @@ export const Route = createFileRoute("/conditions/$conditionId")({
 function ConditionDetail() {
   const { conditionId } = Route.useParams();
   const { data } = useVitavyn();
+  const [symptomOpen, setSymptomOpen] = useState(false);
   const condition = data.conditions.find((c) => c.id === conditionId);
   if (!condition) throw notFound();
 
@@ -101,6 +105,10 @@ function ConditionDetail() {
         ]
       : []),
   ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+
+  const conditionSymptoms = data.symptoms
+    .filter((s) => s.conditionId === condition.id)
+    .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime());
 
   return (
     <div>
@@ -218,6 +226,55 @@ function ConditionDetail() {
             </ul>
           </Panel>
         </div>
+
+        <Panel
+          title="Symptoms"
+          action={
+            <Button size="sm" variant="outline" onClick={() => setSymptomOpen(true)}>
+              <Plus className="h-4 w-4" /> Log symptom
+            </Button>
+          }
+        >
+          <ul className="space-y-3 text-sm">
+            {conditionSymptoms.slice(0, 6).map((s) => (
+              <li key={s.id} className="flex items-start justify-between gap-3">
+                <span className="flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
+                  <span>
+                    <span className="font-medium">{s.name}</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {format(new Date(s.occurredAt), "dd/MM/yyyy · HH:mm")}
+                      {s.durationMinutes ? ` · ${s.durationMinutes} min` : ""}
+                    </span>
+                  </span>
+                </span>
+                <StatusPill tone={s.severity >= 4 ? "attention" : "neutral"}>
+                  Severity {s.severity}/5
+                </StatusPill>
+              </li>
+            ))}
+            {conditionSymptoms.length === 0 ? (
+              <p className="text-muted-foreground">
+                No symptoms logged for this condition yet.
+              </p>
+            ) : null}
+          </ul>
+          {conditionSymptoms.length > 0 ? (
+            <Link
+              to="/symptoms"
+              search={{ condition: condition.id }}
+              className="mt-3 inline-block text-sm font-medium text-primary hover:underline"
+            >
+              See all symptoms →
+            </Link>
+          ) : null}
+        </Panel>
+
+        <SymptomFormDialog
+          open={symptomOpen}
+          onOpenChange={setSymptomOpen}
+          defaultConditionId={condition.id}
+        />
 
         <Panel title="History">
           {history.length === 0 ? (
