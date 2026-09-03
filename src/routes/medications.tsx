@@ -408,59 +408,122 @@ function MedicationsPage() {
         title="Today's schedule"
         action={
           <span className="text-sm text-muted-foreground">
-            {takenCount} of {schedule.length} recorded
+            {takenCount} of {doses.length} recorded
           </span>
         }
       >
-        {schedule.length === 0 ? (
+        {doses.length === 0 ? (
           <EmptyState
             title="No doses scheduled"
             description="Add a medication and choose morning, noon, evening or night."
           />
         ) : (
-          <ul className="divide-y divide-border">
-            {schedule.map(({ med, dose, log }) => {
-              const SlotIcon = slotIcon(dose.slot);
+          <ul className="space-y-2">
+            {doses.map((dose) => {
+              const state = doseState(dose, reference);
+              const Icon = medFormIcon(dose.form);
+              const notTaken = state === "not-taken";
+
+              const timeBlock = (
+                <div className="min-w-0">
+                  <p className="metric-value text-sm">
+                    {formatTimeOfDay(dose.time, twelveHour)}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {mealContextLabel(dose.mealContext)}
+                  </p>
+                </div>
+              );
+
+              const actions = state === "upcoming" ? (
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  in {formatDistanceToNowStrict(dose.scheduled)}
+                </span>
+              ) : notTaken ? (
+                <button
+                  type="button"
+                  onClick={() => undoDose(dose.logId)}
+                  aria-label="Undo not taken"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+                >
+                  <Ban className="h-3.5 w-3.5" strokeWidth={1.75} /> Not taken
+                </button>
+              ) : state === "recorded" ? (
+                <button
+                  type="button"
+                  onClick={() => undoDose(dose.logId)}
+                  aria-label={`${dose.name} recorded — tap to undo`}
+                  title="Recorded — tap to undo"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-success/40 bg-success/10 px-3 py-1 text-xs font-medium text-success transition-colors hover:border-success hover:bg-success/20"
+                >
+                  <Check className="h-3.5 w-3.5" strokeWidth={1.75} /> Taken
+                </button>
+              ) : (
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => markDose(dose, "recorded")}
+                    aria-label={`Record ${dose.name}`}
+                    title="Record dose"
+                    className="h-9 w-9 rounded-full border border-border text-muted-foreground hover:border-success hover:text-success active:scale-95"
+                  >
+                    <Check className="h-3 w-3" strokeWidth={1.75} />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label={`Mark ${dose.name} not taken`}
+                    title="Mark not taken"
+                    onClick={() => markDose(dose, "skipped")}
+                    className="h-9 w-9 rounded-full border border-border text-muted-foreground active:scale-95"
+                  >
+                    <Ban className="h-3 w-3" strokeWidth={1.75} />
+                  </Button>
+                </div>
+              );
+
+              const nameBlock = (
+                <p className="flex min-w-0 items-center gap-2 text-sm font-medium">
+                  <Icon className="h-4 w-4 shrink-0 text-primary" strokeWidth={1.75} />
+                  <span className="truncate">
+                    {dose.name} {dose.dose} {dose.unit}
+                  </span>
+                </p>
+              );
+
+              const conditionChip = dose.conditionName ? (
+                <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                  {dose.conditionName}
+                </span>
+              ) : null;
+
               return (
                 <li
-                  key={med.id + dose.time}
-                  className="flex flex-wrap items-center justify-between gap-3 py-3"
+                  key={dose.medicationId + dose.time}
+                  className={`rounded-xl border border-border px-4 py-3 transition-opacity ${
+                    notTaken ? "opacity-50" : ""
+                  }`}
                 >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="w-16 shrink-0">
-                      <p className="metric-value text-sm">{formatTimeOfDay(dose.time, twelveHour)}</p>
-                      <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                        <SlotIcon className="h-3 w-3" strokeWidth={1.75} />
-                        {slotLabel(dose.slot)}
-                      </p>
+                  {/* Mobile: compact stack */}
+                  <div className="sm:hidden">
+                    <div className="flex items-start justify-between gap-3">
+                      {timeBlock}
+                      {actions}
                     </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">
-                        {med.name} {med.dose} {med.unit}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {mealContextLabel(dose.mealContext)}
-                      </p>
-                    </div>
+                    <div className="mt-1.5">{nameBlock}</div>
+                    {conditionChip ? <div className="mt-2">{conditionChip}</div> : null}
                   </div>
-                  {log ? (
-                    <StatusPill tone={log.status === "recorded" ? "success" : "neutral"}>
-                      {log.status === "recorded" ? "Recorded" : "Not taken"}
-                    </StatusPill>
-                  ) : (
-                    <div className="flex gap-2">
-                      <Button size="sm" onClick={() => markDose(med.id, dose.time, "recorded")}>
-                        <Check className="h-4 w-4" /> Record
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => markDose(med.id, dose.time, "skipped")}
-                      >
-                        <SkipForward className="h-4 w-4" /> Not taken
-                      </Button>
+
+                  {/* Web: three columns */}
+                  <div className="hidden items-center gap-4 sm:flex">
+                    <div className="w-24 shrink-0">{timeBlock}</div>
+                    <div className="min-w-0 flex-1">
+                      {nameBlock}
+                      {conditionChip ? <div className="mt-1.5">{conditionChip}</div> : null}
                     </div>
-                  )}
+                    {actions}
+                  </div>
                 </li>
               );
             })}
