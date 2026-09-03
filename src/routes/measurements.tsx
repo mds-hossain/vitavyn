@@ -52,6 +52,7 @@ export const Route = createFileRoute("/measurements")({
   }),
   validateSearch: (search: Record<string, unknown>) => ({
     condition: typeof search["condition"] === "string" ? (search["condition"] as string) : "",
+    metric: typeof search["metric"] === "string" ? (search["metric"] as string) : "",
   }),
   component: MeasurementsPage,
 });
@@ -69,7 +70,7 @@ const KINDS = [
 
 function MeasurementsPage() {
   const { data, add, remove, updateItem, hydrated } = useVitavyn();
-  const { condition: initialCondition } = Route.useSearch();
+  const { condition: initialCondition, metric: initialMetric } = Route.useSearch();
   const prefs = data.preferences;
   const [conditionId, setConditionId] = useState(initialCondition || "all");
   const [addOpen, setAddOpen] = useState(false);
@@ -110,6 +111,12 @@ function MeasurementsPage() {
   const [chipId, setChipId] = useState(chips[0]?.id ?? "glucose");
   const activeChip = chips.find((c) => c.id === chipId) ?? chips[0]!;
   const kind = activeChip.kind;
+
+  useEffect(() => {
+    if (!initialMetric) return;
+    const match = chips.find((c) => c.metric === initialMetric || c.label === initialMetric);
+    if (match) setChipId(match.id);
+  }, [initialMetric, chips]);
 
   useEffect(() => {
     if (!chips.some((c) => c.id === chipId)) setChipId(chips[0]?.id ?? "glucose");
