@@ -59,7 +59,13 @@ function ConditionDetail() {
     .filter((a) => a.status === "upcoming")
     .filter((a) => {
       const haystack = `${a.title} ${a.purpose ?? ""} ${a.specialty}`.toLowerCase();
-      return haystack.includes(condition.name.toLowerCase());
+      if (haystack.includes(condition.name.toLowerCase())) return true;
+      // Fall back to significant words from the condition name (e.g. "diabetes").
+      return condition.name
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((word) => word.length > 4)
+        .some((word) => haystack.includes(word));
     })
     .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
 
