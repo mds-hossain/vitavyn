@@ -170,30 +170,24 @@ function MedicationsPage() {
   const conditionNameFor = (med: Medication) =>
     data.conditions.find((c) => med.conditionIds?.includes(c.id))?.name;
 
-  const schedule = current
-    .filter((med) => med.frequency !== "as_needed")
-    .flatMap((med) =>
-      medicationSchedule(med).map((dose) => {
-        const log = todaysLogs.find(
-          (l) =>
-            l.medicationId === med.id && format(new Date(l.scheduledFor), "HH:mm") === dose.time,
-        );
-        return { med, dose, log };
-      }),
-    )
-    .sort((a, b) => a.dose.time.localeCompare(b.dose.time));
+  const reference = new Date();
+  const doses = todaysDoses(data, reference);
+  const takenCount = doses.filter((d) => d.status === "recorded").length;
 
-  const markDose = (medicationId: string, time: string, status: "recorded" | "skipped") => {
-    const [h, m] = time.split(":");
-    const scheduled = new Date();
-    scheduled.setHours(Number(h), Number(m), 0, 0);
+  const markDose = (dose: ReturnType<typeof todaysDoses>[number], status: "recorded" | "skipped") => {
     add("medicationLogs", {
-      medicationId,
-      scheduledFor: scheduled.toISOString(),
+      medicationId: dose.medicationId,
+      scheduledFor: dose.scheduled.toISOString(),
       recordedAt: new Date().toISOString(),
       status,
     } as never);
     toast.success(status === "recorded" ? "Dose recorded" : "Marked as not taken");
+  };
+
+  const undoDose = (logId?: string) => {
+    if (!logId) return;
+    remove("medicationLogs", logId);
+    toast.success("Log removed");
   };
 
   const openAdd = () => {
