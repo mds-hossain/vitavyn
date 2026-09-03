@@ -73,10 +73,22 @@ export function ConditionFormDialog({
   const set = <K extends keyof ConditionFormValues>(key: K, value: ConditionFormValues[K]) =>
     setValues((v) => ({ ...v, [key]: value }));
 
+  /** Nothing shows until the user types: rank by prefix, then word-start, then contains. */
   const suggestions = useMemo(() => {
     const q = values.name.trim().toLowerCase();
-    if (!q) return CONDITION_NAMES.slice(0, 8);
-    return CONDITION_NAMES.filter((c) => c.toLowerCase().includes(q)).slice(0, 8);
+    if (q.length < 2) return [];
+    const scored = CONDITION_NAMES.map((c) => {
+      const lower = c.toLowerCase();
+      let score = -1;
+      if (lower.startsWith(q)) score = 0;
+      else if (lower.split(/[^a-z0-9]+/).some((w) => w.startsWith(q))) score = 1;
+      else if (lower.includes(q)) score = 2;
+      else if (q.split(/\s+/).every((t) => lower.includes(t))) score = 3;
+      return { c, score };
+    })
+      .filter((s) => s.score >= 0)
+      .sort((a, b) => a.score - b.score || a.c.length - b.c.length);
+    return scored.slice(0, 8).map((s) => s.c);
   }, [values.name]);
 
   const metricOptions = useMemo(

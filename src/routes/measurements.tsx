@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { EmptyState, PageHeader, Panel } from "@/components/vitavyn/primitives";
+import { kindForMetric } from "@/lib/vitavyn/conditionSeed";
 import { MeasurementChart } from "@/components/vitavyn/MeasurementChart";
 import { QuickAdd } from "@/components/vitavyn/QuickAdd";
 import { UnitValueInput } from "@/components/vitavyn/UnitValueInput";
@@ -41,6 +49,9 @@ export const Route = createFileRoute("/measurements")({
       { property: "og:description", content: "Every value you track, with trends and units you prefer." },
     ],
   }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    condition: typeof search["condition"] === "string" ? (search["condition"] as string) : "",
+  }),
   component: MeasurementsPage,
 });
 
@@ -56,8 +67,10 @@ const KINDS = [
 ];
 
 function MeasurementsPage() {
-  const { data, remove, updateItem } = useVitavyn();
+  const { data, remove, updateItem, hydrated } = useVitavyn();
+  const { condition: initialCondition } = Route.useSearch();
   const prefs = data.preferences;
+  const [conditionId, setConditionId] = useState(initialCondition || "all");
   const [kind, setKind] = useState("glucose");
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<Measurement | null>(null);
@@ -65,8 +78,33 @@ function MeasurementsPage() {
   const [editSecondary, setEditSecondary] = useState("");
   const [editUnit, setEditUnit] = useState("");
 
+  useEffect(() => {
+    if (initialCondition) setConditionId(initialCondition);
+  }, [initialCondition]);
+
+  const activeCondition =
+    conditionId === "all" ? undefined : data.conditions.find((c) => c.id === conditionId);
+
+  /** Kind chips follow the selected condition's tracked metrics. */
+  const visibleKinds = useMemo(() => {
+    if (!activeCondition) return KINDS;
+    const allowed = new Set(
+      activeCondition.trackedMetrics
+        .map((metric) => kindForMetric(metric))
+        .filter((k): k is string => !!k),
+    );
+    if (activeCondition.trackedMetrics.some((metric) => !kindForMetric(metric))) allowed.add("custom");
+    const list = KINDS.filter((k) => allowed.has(k.id));
+    return list.length > 0 ? list : KINDS;
+  }, [activeCondition]);
+
+  useEffect(() => {
+    if (!visibleKinds.some((k) => k.id === kind)) setKind(visibleKinds[0]?.id ?? "glucose");
+  }, [visibleKinds, kind]);
+
   const rows = data.measurements
     .filter((m) => m.kind === kind)
+    .filter((m) => !activeCondition || !m.conditionId || m.conditionId === activeCondition.id)
     .sort((a, b) => new Date(b.takenAt).getTime() - new Date(a.takenAt).getTime());
 
   const openEdit = (row: Measurement) => {
@@ -100,6 +138,13 @@ function MeasurementsPage() {
 
   return (
     <div className="space-y-6">
+      {activeCondition ? (
+        <Button asChild variant="ghost" size="sm" className="-ml-2">
+          <Link to="/conditions/$conditionId" params={{ conditionId: activeCondition.id }}>
+            <ArrowLeft className="h-4 w-4" /> {activeCondition.name}
+          </Link>
+        </Button>
+      ) : null}
       <PageHeader
         title="Measurements"
         description="Nothing here is hardcoded to one disease — add any measurement type you need, in any unit."
@@ -110,8 +155,29 @@ function MeasurementsPage() {
         }
       />
 
+      <div className="flex flex-wrap items-center gap-3">
+        <Select value={conditionId} onValueChange={setConditionId}>
+          <SelectTrigger className="w-full sm:w-64" aria-label="Filter by condition">
+            <SelectValue placeholder="All conditions" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All conditions</SelectItem>
+            {data.conditions.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {activeCondition ? (
+          <p className="text-xs text-muted-foreground">
+            Showing metrics tracked for {activeCondition.name}.
+          </p>
+        ) : null}
+      </div>
+
       <div className="flex flex-wrap gap-2">
-        {KINDS.map((k) => (
+        {visibleKinds.map((k) => (
           <button
             key={k.id}
             onClick={() => setKind(k.id)}
@@ -142,7 +208,7 @@ function MeasurementsPage() {
                 </div>
                 <div className="flex items-center gap-1">
                   <span className="text-xs text-muted-foreground">
-                    {format(new Date(row.takenAt), "MMM d, yyyy · HH:mm")}
+                    {hydrated ? format(new Date(row.takenAt), "MMM d, yyyy · HH:mm") : ""}
                   </span>
                   <Button variant="ghost" size="icon" aria-label="Edit measurement" onClick={() => openEdit(row)}>
                     <Pencil className="h-4 w-4" />
