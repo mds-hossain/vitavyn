@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -113,7 +113,7 @@ export function ConditionFormDialog({
           <div className="space-y-1.5">
             <Label>Condition name</Label>
             <Popover open={nameOpen && suggestions.length > 0} onOpenChange={setNameOpen}>
-              <PopoverTrigger asChild>
+              <PopoverAnchor asChild>
                 <Input
                   value={values.name}
                   placeholder="Start typing, e.g. Hypertension"
@@ -125,7 +125,7 @@ export function ConditionFormDialog({
                   }}
                   onFocus={() => setNameOpen(true)}
                 />
-              </PopoverTrigger>
+              </PopoverAnchor>
               <PopoverContent
                 align="start"
                 className="w-[--radix-popover-trigger-width] p-1"
