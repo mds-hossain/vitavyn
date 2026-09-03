@@ -42,7 +42,8 @@ export type CollectionKey =
   | "labResults"
   | "records"
   | "meals"
-  | "tasks";
+  | "tasks"
+  | "customMetrics";
 
 const VitavynContext = createContext<Ctx | null>(null);
 
@@ -63,7 +64,10 @@ export function VitavynProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) setData(JSON.parse(raw) as VitavynData);
+      if (raw) {
+        const parsed = JSON.parse(raw) as VitavynData;
+        setData({ ...buildDemoData(), ...parsed, customMetrics: parsed.customMetrics ?? [] });
+      }
     } catch {
       /* ignore corrupted local data */
     }
@@ -143,6 +147,7 @@ export function VitavynProvider({ children }: { children: ReactNode }) {
             records: [],
             meals: [],
             tasks: [],
+            customMetrics: [],
           };
         }),
     }),
