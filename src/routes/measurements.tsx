@@ -23,7 +23,6 @@ import {
 import { EmptyState, PageHeader, Panel } from "@/components/vitavyn/primitives";
 import { kindForMetric } from "@/lib/vitavyn/conditionSeed";
 import { MeasurementChart } from "@/components/vitavyn/MeasurementChart";
-import { QuickAdd } from "@/components/vitavyn/QuickAdd";
 import { UnitValueInput } from "@/components/vitavyn/UnitValueInput";
 import { useVitavyn } from "@/lib/vitavyn/store";
 import type { Measurement } from "@/lib/vitavyn/types";
@@ -67,12 +66,16 @@ const KINDS = [
 ];
 
 function MeasurementsPage() {
-  const { data, remove, updateItem, hydrated } = useVitavyn();
+  const { data, add, remove, updateItem, hydrated } = useVitavyn();
   const { condition: initialCondition } = Route.useSearch();
   const prefs = data.preferences;
   const [conditionId, setConditionId] = useState(initialCondition || "all");
   const [kind, setKind] = useState("glucose");
   const [addOpen, setAddOpen] = useState(false);
+  const [logValue, setLogValue] = useState("");
+  const [logSecondary, setLogSecondary] = useState("");
+  const [logUnit, setLogUnit] = useState("");
+  const [logLabel, setLogLabel] = useState("");
   const [editing, setEditing] = useState<Measurement | null>(null);
   const [editValue, setEditValue] = useState("");
   const [editSecondary, setEditSecondary] = useState("");
@@ -106,6 +109,57 @@ function MeasurementsPage() {
     .filter((m) => m.kind === kind)
     .filter((m) => !activeCondition || !m.conditionId || m.conditionId === activeCondition.id)
     .sort((a, b) => new Date(b.takenAt).getTime() - new Date(a.takenAt).getTime());
+
+  const activeKindLabel = KINDS.find((k) => k.id === kind)?.label ?? "Measurement";
+
+  const openLog = () => {
+    setLogValue("");
+    setLogSecondary("");
+    setLogLabel("");
+    setLogUnit(preferredUnit(kind, prefs, canonicalUnit(kind)));
+    setAddOpen(true);
+  };
+
+  const saveLog = () => {
+    const label = kind === "custom" ? logLabel.trim() : activeKindLabel;
+    if (kind === "custom" && !label) {
+      toast.error("Name this measurement");
+      return;
+    }
+    if (kind === "blood_pressure") {
+      const sys = Number(logValue);
+      const dia = Number(logSecondary);
+      if (!Number.isFinite(sys) || !Number.isFinite(dia) || !logValue || !logSecondary) {
+        toast.error("Enter both values");
+        return;
+      }
+      add("measurements", {
+        kind,
+        label,
+        value: sys,
+        secondaryValue: dia,
+        unit: "mmHg",
+        takenAt: new Date().toISOString(),
+        conditionId: activeCondition?.id ?? null,
+      } as never);
+    } else {
+      const raw = Number(logValue);
+      if (!logValue || !Number.isFinite(raw)) {
+        toast.error("Enter a valid value");
+        return;
+      }
+      add("measurements", {
+        kind,
+        label,
+        value: round(toCanonicalValue(kind, logUnit, raw), 2),
+        unit: canonicalUnit(kind) || logUnit,
+        takenAt: new Date().toISOString(),
+        conditionId: activeCondition?.id ?? null,
+      } as never);
+    }
+    setAddOpen(false);
+    toast.success(`${label} logged`);
+  };
 
   const openEdit = (row: Measurement) => {
     const unit = preferredUnit(row.kind, prefs, row.unit);
@@ -149,8 +203,8 @@ function MeasurementsPage() {
         title="Measurements"
         description="Nothing here is hardcoded to one disease — add any measurement type you need, in any unit."
         actions={
-          <Button onClick={() => setAddOpen(true)}>
-            <Plus className="h-4 w-4" /> Log measurement
+          <Button onClick={openLog}>
+            <Plus className="h-4 w-4" /> Log {activeKindLabel.toLowerCase()}
           </Button>
         }
       />
@@ -228,7 +282,59 @@ function MeasurementsPage() {
         )}
       </Panel>
 
-      <QuickAdd open={addOpen} onOpenChange={setAddOpen} />
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Log {activeKindLabel.toLowerCase()}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {kind === "custom" ? (
+              <div className="space-y-1.5">
+                <Label>Measurement name</Label>
+                <Input
+                  value={logLabel}
+                  onChange={(e) => setLogLabel(e.target.value)}
+                  placeholder="e.g. Peak flow"
+                />
+              </div>
+            ) : null}
+            {kind === "blood_pressure" ? (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Systolic</Label>
+                  <Input type="number" value={logValue} onChange={(e) => setLogValue(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Diastolic</Label>
+                  <Input
+                    type="number"
+                    value={logSecondary}
+                    onChange={(e) => setLogSecondary(e.target.value)}
+                  />
+                </div>
+              </div>
+            ) : (
+              <UnitValueInput
+                kind={kind}
+                label={kind === "custom" ? "Value" : activeKindLabel}
+                big
+                value={logValue}
+                unit={logUnit}
+                onValueChange={setLogValue}
+                onUnitChange={setLogUnit}
+              />
+            )}
+            {activeCondition ? (
+              <p className="text-xs text-muted-foreground">
+                Linked to {activeCondition.name}.
+              </p>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button onClick={saveLog}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!editing} onOpenChange={(next) => (next ? null : setEditing(null))}>
         <DialogContent>
