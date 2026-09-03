@@ -68,6 +68,26 @@ const KINDS = [
   { id: "custom", label: "Custom" },
 ];
 
+type MeasurementChip = { id: string; label: string; kind: string; metric: string };
+
+function chipForTrackedMetric(metric: string): MeasurementChip {
+  const kind = kindForMetric(metric) ?? "custom";
+  const genericKind = KINDS.find((item) => item.id === kind);
+  const isGenericBuiltIn =
+    kind !== "custom" &&
+    genericKind != null &&
+    metric.toLowerCase().startsWith(genericKind.label.toLowerCase());
+
+  return isGenericBuiltIn
+    ? { id: kind, label: genericKind.label, kind, metric: "" }
+    : { id: `${kind}:${metric}`, label: metric, kind, metric };
+}
+
+function uniqueChips(chips: MeasurementChip[]) {
+  const seen = new Set<string>();
+  return chips.filter((chip) => (seen.has(chip.id) ? false : (seen.add(chip.id), true)));
+}
+
 function MeasurementsPage() {
   const { data, add, remove, updateItem, hydrated } = useVitavyn();
   const { condition: initialCondition, metric: initialMetric } = Route.useSearch();
@@ -92,21 +112,27 @@ function MeasurementsPage() {
   const activeCondition =
     conditionId === "all" ? undefined : data.conditions.find((c) => c.id === conditionId);
 
-  /** Chips follow the selected condition's tracked metrics (built-in or custom). */
+  /**
+   * A condition filter narrows the portal to that condition's metrics. The normal
+   * Measurements view keeps every metric selected under any condition available.
+   */
   const chips = useMemo(() => {
-    if (!activeCondition) return KINDS.map((k) => ({ id: k.id, label: k.label, kind: k.id, metric: "" }));
-    const list = activeCondition.trackedMetrics.map((metric) => {
-      const builtin = kindForMetric(metric);
-      return builtin
-        ? { id: builtin, label: KINDS.find((k) => k.id === builtin)?.label ?? metric, kind: builtin, metric: "" }
-        : { id: `custom:${metric}`, label: metric, kind: "custom", metric };
-    });
-    const seen = new Set<string>();
-    const unique = list.filter((c) => (seen.has(c.id) ? false : (seen.add(c.id), true)));
-    return unique.length > 0
-      ? unique
-      : KINDS.map((k) => ({ id: k.id, label: k.label, kind: k.id, metric: "" }));
-  }, [activeCondition]);
+    const defaultChips = KINDS.map((item) => ({
+      id: item.id,
+      label: item.label,
+      kind: item.id,
+      metric: "",
+    }));
+    if (activeCondition) {
+      const conditionChips = uniqueChips(activeCondition.trackedMetrics.map(chipForTrackedMetric));
+      return conditionChips.length > 0 ? conditionChips : defaultChips;
+    }
+
+    const linkedMetricChips = data.conditions.flatMap((condition) =>
+      condition.trackedMetrics.map(chipForTrackedMetric),
+    );
+    return uniqueChips([...defaultChips, ...linkedMetricChips]);
+  }, [activeCondition, data.conditions]);
 
   const [chipId, setChipId] = useState(chips[0]?.id ?? "glucose");
   const activeChip = chips.find((c) => c.id === chipId) ?? chips[0]!;
