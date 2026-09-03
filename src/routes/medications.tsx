@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { format, isSameDay } from "date-fns";
-import { Check, Pencil, Plus, SkipForward, Trash2 } from "lucide-react";
+import { format, formatDistanceToNowStrict, isSameDay } from "date-fns";
+import { Ban, Check, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,7 +42,6 @@ import {
   PageHeader,
   Panel,
   SafetyNote,
-  StatusPill,
 } from "@/components/vitavyn/primitives";
 import { DatePicker } from "@/components/vitavyn/DatePicker";
 import {
@@ -67,6 +66,7 @@ import {
   slotForTime,
   unitsForForm,
 } from "@/lib/vitavyn/medication";
+import { doseState, todaysDoses } from "@/lib/vitavyn/personalize";
 import { useVitavyn } from "@/lib/vitavyn/store";
 import type { DoseSlot, Medication } from "@/lib/vitavyn/types";
 
