@@ -228,7 +228,11 @@ function TodayPage() {
                 </div>
               );
 
-              const actions = notTaken ? (
+              const actions = state === "upcoming" ? (
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  in {formatDistanceToNowStrict(dose.scheduled)}
+                </span>
+              ) : notTaken ? (
                 <button
                   type="button"
                   onClick={() => undoDose(dose.logId)}
