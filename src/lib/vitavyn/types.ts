@@ -164,6 +164,12 @@ export type HealthTask = Stamped & {
   done: boolean;
 };
 
+export type CustomMetric = Stamped & {
+  name: string;
+  inputFormat: "numeric" | "scale_1_10" | "yes_no";
+  unit?: string;
+};
+
 export type VitavynData = {
   version: number;
   profile: Profile;
