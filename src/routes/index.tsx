@@ -12,7 +12,7 @@ import {
   Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Panel, SafetyNote, StatusPill } from "@/components/vitavyn/primitives";
+import { Panel, SafetyNote } from "@/components/vitavyn/primitives";
 import { MeasurementCard } from "@/components/vitavyn/MeasurementCard";
 import { QuickAdd } from "@/components/vitavyn/QuickAdd";
 import { buildTimeline, useVitavyn } from "@/lib/vitavyn/store";
@@ -180,7 +180,7 @@ function TodayPage() {
           <div className="rounded-xl border border-border px-4 py-3 text-sm">
             <span className="font-medium">Next appointment</span>
             <p className="mt-1 text-muted-foreground">
-              {nextAppointment
+              {now && nextAppointment
                 ? `${nextAppointment.providerName} · ${format(new Date(nextAppointment.startsAt), "MMM d, HH:mm")}`
                 : "Nothing scheduled"}
             </p>
