@@ -44,6 +44,6 @@ Vitavyn follows strict UI/UX guidelines to ensure a premium feel:
 
 ## License & Copyright
 
-**© 2026 Md Shakhawat Hossain. All Rights Reserved.**
+**© 2026 Shakhawat H. All Rights Reserved.**
 
 This repository is made public for portfolio demonstration purposes only. The source code, design assets, and architecture are proprietary. You are strictly prohibited from copying, distributing, modifying, cloning, or using this code for any personal or commercial purpose.
