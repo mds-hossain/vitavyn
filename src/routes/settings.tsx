@@ -96,10 +96,21 @@ function SettingsPage() {
           </div>
           <div className="space-y-1.5">
             <Label>Blood type</Label>
-            <Input
+            <Select
               value={profile.bloodType ?? ""}
-              onChange={(e) => setProfile({ bloodType: e.target.value })}
-            />
+              onValueChange={(value) => setProfile({ bloodType: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select blood type" />
+              </SelectTrigger>
+              <SelectContent>
+                {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "Unknown"].map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1.5">
             <Label>Allergies (comma separated)</Label>
