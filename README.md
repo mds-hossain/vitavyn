@@ -1,4 +1,4 @@
-# Vitavyn
+# Vitavyn - Your personal health OS
 
 **Live App:** [vitavyn.lovable.app](https://vitavyn.lovable.app)
 
@@ -29,10 +29,21 @@ Vitavyn bridges the gap between complex medical tracking and elegant, non-judgme
 * **Data & State:** IndexedDB (Local-first), Supabase, TanStack Query
 * **Tooling:** Vite, Lovable AI
 
-## Development & Installation
+## Development & Architecture
 
-Prefer working locally? You need Node.js and npm installed on your machine.
+*Note: The source code for Vitavyn is proprietary. Local installation instructions and environment variables are reserved strictly for authorized developers and collaborators.*
 
-1. **Clone the repository:**
-   ```sh
-   git clone [https://github.com/mds-hossain/vitavyn.git](https://github.com/mds-hossain/vitavyn.git)
+Vitavyn follows strict UI/UX guidelines to ensure a premium feel:
+* **Minimalism:** No emojis, utilizing crisp SVG line iconography.
+* **Density:** Intelligent use of CSS Grid and Flexbox to maximize data scannability without vertical bloat on mobile devices.
+* **Progressive Disclosure:** Hiding complex administrative fields behind smooth expand/collapse components.
+
+## Authors
+
+* **Md Shakhawat Hossain** - UX/UI Design & Engineering
+
+## License & Copyright
+
+**© 2026 Md Shakhawat Hossain. All Rights Reserved.**
+
+This repository is made public for portfolio demonstration purposes only. The source code, design assets, and architecture are proprietary. You are strictly prohibited from copying, distributing, modifying, cloning, or using this code for any personal or commercial purpose.
