@@ -28,13 +28,13 @@ import {
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Today — Vitavyn" },
+      { title: "Vitavyn - Your Personal Health OS" },
       {
         name: "description",
         content:
           "Your day at a glance: what needs attention, medication progress, measurements due and upcoming appointments.",
       },
-      { property: "og:title", content: "Today — Vitavyn" },
+      { property: "og:title", content: "Vitavyn - Your Personal Health OS" },
       {
         property: "og:description",
         content: "See what needs your attention today and record it in a couple of taps.",
