@@ -213,6 +213,10 @@ function SettingsPage() {
           </AlertDialog>
         </div>
       </Panel>
+
+      <p className="text-center text-sm text-muted-foreground">
+        Developed and designed by: Shakhawat H.
+      </p>
     </div>
   );
 }
